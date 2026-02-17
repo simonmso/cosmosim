@@ -166,10 +166,10 @@ class BackgroundCosmology:
         chi = self.chi(x)
         if self.OmegaK0 == 0:
             return chi
-        k = -self.OmegaK0 * self.H0**2 / const.c**2
+        sqrt_k = np.sqrt(np.abs(self.OmegaK0)) * self.H0 / const.c
         if self.OmegaK0 < 0:
-            return np.sin(k * chi) / k
-        return np.sinh(k * chi) / k
+            return np.sin(sqrt_k * chi) / sqrt_k
+        return np.sinh(sqrt_k * chi) / sqrt_k
 
     def dA(self, x):
         return np.exp(x) * self.r(x)

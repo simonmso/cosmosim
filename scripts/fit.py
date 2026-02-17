@@ -92,17 +92,21 @@ def main():
     )
     sampler.run_mcmc(start, niters, progress=True)
 
+    discard = 0
     try:
         print("auto correlation time")
-        print(sampler.get_autocorr_time())
+        cor = sampler.get_autocorr_time()
+        print(cor)
+        discard = int(np.floor(max(cor)))
+
     except emcee.autocorr.AutocorrError as e:
         print("!------ Chain too short ------!")
         print(e.args[0])
 
     np.savez(
         file=path.join(args.data, "supernova.npz"),
-        chain=sampler.get_chain(flat=True),
-        log_prob=sampler.get_log_prob(flat=True),
+        chain=sampler.get_chain(flat=True, discard=discard),
+        log_prob=sampler.get_log_prob(flat=True, discard=discard),
     )
 
 
