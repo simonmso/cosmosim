@@ -51,11 +51,30 @@ def main():
 
     # hist
     fig, ax = combined_res.hist2d()
+    ax.set_title("MCMC Params. for Supernova $d_L$")
     fig.savefig(path.join(dest, "omega_hist"))
     plt.close(fig)
 
     # report
     combined_res.report()
+
+    # --------------- M, Lambda ----------------
+    m_lam_res = MCMCResult(
+        chain=[omega_M, omega_lam],
+        log_prob=log_prob,
+        labels=[r"$\Omega_{M,0}$", r"$\Omega_{\Lambda,0}$"],
+        fiducial=[lcdm.OmegaM0, lcdm.OmegaLambda0],
+    )
+
+    fig, ax = m_lam_res.hist2d()
+    ax.set_title("MCMC Params. for Supernova $d_L$")
+    ax.set_xlim(0)
+    ax.set_ylim(0)
+    # ax.legend(scatterpoints=1, loc="center right")
+    fig.savefig(path.join(dest, "omega_hist_MLam"))
+    plt.close(fig)
+
+    m_lam_res.report()
 
     # -------------- Individual ----------------
     indiv_res = MCMCResult(

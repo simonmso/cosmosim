@@ -21,6 +21,9 @@ class BackgroundCosmology:
       name        (float,optional): A name for describing the cosmology
       TCMB        (float,optional): The temperature of the CMB today in Kelvin. Fiducial value is 2.725K
       Neff        (float,optional): The effective number of relativistic neutrinos
+      OmegaR0     (float,optional): Total radiation density. Overrides TCMB and Neff
+      OmegaM0     (float,optional): Total matter density. Overrides OmegaB0 and OmegaCDM
+      x_pts       ([float],optional): values of x to solve for
 
     Attributes:
       OmegaR0      (float): Radiation matter density parameter at z = 0
@@ -29,17 +32,12 @@ class BackgroundCosmology:
       OmegaK0      (float): Curvature density parameter at z = 0
 
     Functions:
-      eta_of_x             (float->float) : Conformal time times c (units of length) as function of x=log(a)
-      H_of_x               (float->float) : Hubble parameter as function of x=log(a)
-      dHdx_of_x            (float->float) : First derivative of hubble parameter as function of x=log(a)
-      Hp_of_x              (float->float) : Conformal hubble parameter H*a as function of x=log(a)
-      dHpdx_of_x           (float->float) : First derivative of conformal hubble parameter as function of x=log(a)
+      eta             (float->float) : Conformal time times c (units of length) as function of x=log(a)
+      H               (float->float) : Hubble parameter as function of x=log(a)
+      dHdx            (float->float) : First derivative of hubble parameter as function of x=log(a)
+      Hp              (float->float) : Conformal hubble parameter H*a as function of x=log(a)
+      dHpdx           (float->float) : First derivative of conformal hubble parameter as function of x=log(a)
     """
-
-    # Settings for integration and splines of eta
-    x_start = np.log(1e-8)
-    x_end = np.log(1.0)
-    n_pts_splines = 1000
 
     def __init__(
         self,
@@ -52,6 +50,7 @@ class BackgroundCosmology:
         Neff=3.046,
         OmegaR0=None,
         OmegaM0=None,
+        x_pts=None,
     ):
         self.OmegaK0 = OmegaK0
         self.h0 = h0
@@ -82,6 +81,8 @@ class BackgroundCosmology:
             self.OmegaCDM0 = None
         else:
             self.OmegaM0 = OmegaB0 + OmegaCDM0  # Total matter
+            self.OmegaB0 = OmegaB0
+            self.OmegaCDM0 = OmegaCDM0
 
         self.OmegaNu0 = (
             self.Neff * (7.0 / 8.0) * (4.0 / 11.0) ** (4.0 / 3.0) * self.OmegaR0
@@ -90,6 +91,15 @@ class BackgroundCosmology:
         self.OmegaLambda0 = (
             1.0 - self.OmegaR0tot - self.OmegaM0 - self.OmegaK0
         )  # Dark energy (from Sum Omega_i = 1)
+
+        # Settings for integration and splines of eta
+        if x_pts is not None:
+            self.x_pts = x_pts
+        else:
+            self.x_pts = np.linspace(np.log(1e-8), np.log(1.0), num=1000)
+
+        self.x_start = min(self.x_pts)
+        self.x_end = max(self.x_pts)
 
     # =========================================================================
     # Methods availiable after solving
@@ -120,15 +130,40 @@ class BackgroundCosmology:
         K = self.OmegaK0 * (a ** (-2))
         L = self.OmegaLambda0
 
-        return (self.H0 / (2 * np.sqrt(M + R + K + L))) * (-3 * M - 4 * R - 2 * K)
+        return (self.H0 / (2.0 * np.sqrt(M + R + K + L))) * (
+            -3.0 * M - 4.0 * R - 2.0 * K
+        )
 
     def dHpdx(self, x):
         a = np.exp(x)
         return a * (self.H(x) + self.dHdx(x))
 
+    def d2Hdx2(self, x):
+        a = np.exp(x)
+        M = self.OmegaM0 * (a ** (-3))
+        R = self.OmegaR0tot * (a ** (-4))
+        K = self.OmegaK0 * (a ** (-2))
+        L = self.OmegaLambda0
+        H0 = self.H0
+        H = self.H(x)
+        dH = self.dHdx(x)
+
+        A = -(1.0 / H**2) * dH * (-3.0 * M - 4.0 * R - 2.0 * K)
+        B = (1.0 / H) * (9.0 * M + 16.0 * R + 4.0 * K)
+
+        return (H0**2 / 2.0) * (A + B)
+
+    def d2Hpdx2(self, x):
+        a = np.exp(x)
+        H = self.H(x)
+        dH = self.dHdx(x)
+        d2H = self.d2Hdx2(x)
+
+        return a * (H + 2 * dH + d2H)
+
     def detadx(
         self, x, eta=None
-    ):  # include eta so the function can be passed directly to solve_ivp
+    ):  # unused param eta so the function can be passed directly to solve_ivp
         return const.c / self.Hp(x)
 
     def OmegaK(self, x):
@@ -203,15 +238,12 @@ class BackgroundCosmology:
         Main driver for all the solving.
         For LCDM we only need to solve for the conformal time eta(x)
         """
-        # Make scale factor array (logspaced)
-        x_array = np.linspace(self.x_start, self.x_end, num=self.n_pts_splines)
-
         # Compute and spline conformal time eta = Int_0^t dt/a = Int da/(a^2 H(a)) =  Int dx/[ exp(x) * H(exp(x)) ] where x = log a
         out = integrate.solve_ivp(
             self.detadx,
             t_span=(self.x_start, self.x_end),
             y0=(const.c / self.Hp(self.x_start),),
-            t_eval=x_array,  # explicitly compute eta at these x values
+            t_eval=self.x_pts,  # explicitly compute eta at these x values
             dense_output=True,  # create spline
             rtol=rtol,
         )

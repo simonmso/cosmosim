@@ -19,9 +19,10 @@ class MCMCResult:
         self.best = np.quantile(self.chain, 0.5, axis=1)
 
     def hist2d(self, q=[0.95, 0.68]):
-        fig, ax = plt.subplots(figsize=(apsw, 0.7 * apsw))
+        fig, ax = plt.subplots(figsize=(apsw, 0.9 * apsw))
 
-        ax.hist2d(self.chain[0], self.chain[1], norm="log", bins=100)
+        (_, _, _, img) = ax.hist2d(self.chain[0], self.chain[1], norm="log", bins=100)
+        fig.colorbar(img, label="MCMC samples", location="bottom")
 
         # 1 and 2 sigma curves
         quantiles = -np.quantile(-self.log_prob, q)
