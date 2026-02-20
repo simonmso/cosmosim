@@ -76,11 +76,24 @@ def main():
 
     m_lam_res.report()
 
+    # ------------------ h0 only ----------------
+    indiv_res = MCMCResult([chain.T[0]], log_prob, labels=["$h_0$"], fiducial=[lcdm.h0])
+
+    # hists
+    fig, axs = indiv_res.hist()
+    axs.set_title("$h_0$ sample distribution")
+    fig.savefig(path.join(dest, "h0_hist"))
+    plt.close()
+
+    # report
+    indiv_res.report()
+
     # -------------- Individual ----------------
     indiv_res = MCMCResult(
         chain.T,
         log_prob,
         labels=["$h_0$", r"$\Omega_{M,0}$", r"$\Omega_{K,0}$"],
+        fiducial=[lcdm.h0, lcdm.OmegaM0, lcdm.OmegaK0],
     )
 
     # hists
@@ -127,6 +140,51 @@ def main():
     ax.legend()
 
     fig.savefig(path.join(dest, "supernovea"))
+    plt.close(fig)
+
+    # ------------------ Hp(x) -----------------
+    toy = BackgroundCosmology(
+        OmegaM0=0.5,
+        Neff=0,
+    )
+    toy.solve()
+
+    fig, ax = plt.subplots(figsize=(apsw, 0.6 * apsw))
+    x_arr = np.linspace(-12, 0, 1000)
+    units = 1 / (const.km / const.s / const.Mpc)
+
+    ax.plot(x_arr, cos_best.Hp(x_arr) * units, label="Best", c="r")
+    ax.plot(x_arr, lcdm.Hp(x_arr) * units, label="Fiducial", c="k")
+    ax.plot(x_arr, toy.Hp(x_arr) * units, label="Toy")
+
+    ax.set_title(r"$\mathcal{H}(x)$")
+    ax.set_xlabel("$x$")
+    ax.set_ylabel(r"$\mathcal{H}(x)$ (km/s/Mpc.)")
+    ax.set_yscale("log")
+    ax.set_xlim(x_arr[0], x_arr[-1])
+
+    ax.legend()
+
+    fig.savefig(path.join(dest, "Hp"))
+    plt.close(fig)
+
+    # ------------------ eta / c ----------------
+    fig, ax = plt.subplots(figsize=(apsw, 0.6 * apsw))
+
+    units = 1.0 / (const.s * 60 * 60 * 24 * 365 * 1e9)
+
+    ax.plot(x_arr, cos_best.eta(x_arr) / const.c * units, label="Best", c="r")
+    ax.plot(x_arr, lcdm.eta(x_arr) / const.c * units, label="Fiducial", c="k")
+    ax.plot(x_arr, toy.eta(x_arr) / const.c * units, label="Toy")
+
+    ax.set_title(r"$\frac{\eta(x)}{c}$")
+    ax.set_xlabel("$x$")
+    ax.set_ylabel(r"$\eta(x)/c$ (Gyr.)")
+    ax.set_yscale("log")
+
+    ax.legend()
+
+    fig.savefig(path.join(dest, "eta"))
     plt.close(fig)
 
 

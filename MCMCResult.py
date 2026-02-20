@@ -69,17 +69,38 @@ class MCMCResult:
         return fig, ax
 
     def hist(self):
+        q = [0.16, 0.50, 0.84]
         nplots = self.chain.shape[0]
         fig, axs = plt.subplots(nrows=nplots, figsize=(apsw, 0.5 * nplots * apsw))
 
         for i in range(nplots):
-            ax = axs[i]
+            quantiles = np.quantile(self.chain[i], q=q)
+
+            ax = axs[i] if nplots > 1 else axs
             ax.hist(
                 self.chain[i],
                 bins=50,
+                edgecolor="grey",
+                facecolor="linen",
+                # lw=2,
+                # ls="--",
+                # alpha=0.5,
+                histtype="stepfilled",
             )
-            ax.set_xlabel(self.labels[i])
 
+            ax.axvline(quantiles[0], ls="--", c="red", lw=0.5)
+            ax.axvline(quantiles[2], ls="--", c="red", lw=0.5)
+            ax.axvline(quantiles[1], ls="-", c="red", lw=0.5, label="Best")
+
+            if self.labels is not None:
+                ax.set_xlabel(self.labels[i])
+
+            if self.fiducial is not None:
+                ax.axvline(self.fiducial[i], ls="-", c="k", lw=0.5, label="Fiducial")
+
+            ax.legend()
+
+        fig.supylabel("MCMC samples")
         return fig, axs
 
     def report(self):
