@@ -92,6 +92,10 @@ class BackgroundCosmology:
             1.0 - self.OmegaR0tot - self.OmegaM0 - self.OmegaK0
         )  # Dark energy (from Sum Omega_i = 1)
 
+        # calculate equalities from analytic expressions
+        self.x_rm = np.log(self.OmegaR0tot / self.OmegaM0)
+        self.x_mlam = np.log(self.OmegaM0 / self.OmegaLambda0) / 3
+
         # Settings for integration and splines of eta
         if x_pts is not None:
             self.x_pts = x_pts
@@ -109,6 +113,11 @@ class BackgroundCosmology:
         if not hasattr(self, "eta_ode_sol"):
             raise NameError("The spline eta_ode_sol has not been created")
         return self.eta_ode_sol(x).flatten()
+
+    def t(self, x):
+        if not hasattr(self, "t"):
+            raise NameError("The spline t_ode_sol has not been created")
+        return self.t_ode_sol(x).flatten()
 
     def H(self, x):
         a = np.exp(x)
@@ -162,9 +171,14 @@ class BackgroundCosmology:
         return a * (H + 2 * dH + d2H)
 
     def detadx(
-        self, x, eta=None
-    ):  # unused param eta so the function can be passed directly to solve_ivp
+        self,
+        x,
+        eta=None,  # unused param eta so the function can be passed directly to solve_ivp
+    ):
         return const.c / self.Hp(x)
+
+    def dtdx(self, x, t=None):
+        return 1 / self.H(x)
 
     def OmegaK(self, x):
         a = np.exp(x)
@@ -239,7 +253,7 @@ class BackgroundCosmology:
         For LCDM we only need to solve for the conformal time eta(x)
         """
         # Compute and spline conformal time eta = Int_0^t dt/a = Int da/(a^2 H(a)) =  Int dx/[ exp(x) * H(exp(x)) ] where x = log a
-        out = integrate.solve_ivp(
+        eta_out = integrate.solve_ivp(
             self.detadx,
             t_span=(self.x_start, self.x_end),
             y0=(const.c / self.Hp(self.x_start),),
@@ -248,7 +262,18 @@ class BackgroundCosmology:
             rtol=rtol,
         )
 
-        self.eta_ode_sol = out.sol
+        # same for t
+        t_out = integrate.solve_ivp(
+            self.dtdx,
+            t_span=(self.x_start, self.x_end),
+            y0=(1 / (2 * self.H(self.x_start)),),
+            t_eval=self.x_pts,  # explicitly compute eta at these x values
+            dense_output=True,  # create spline
+            rtol=rtol,
+        )
+
+        self.eta_ode_sol = eta_out.sol
+        self.t_ode_sol = t_out.sol
 
     def plot(self, url):
         """
