@@ -76,35 +76,44 @@ class RecombinationHistory:
     # Methods availiable after solving
     # =========================================================================
 
-    def tau_of_x(self, x):
-        if not hasattr(self, "tau_of_x_spline"):
-            raise NameError("The spline tau_of_x_spline has not been created")
-        return self.tau_of_x_spline(x)
+    def tau(self, x):
+        if not hasattr(self, "tau_spline"):
+            raise NameError("The spline tau_spline has not been created")
+        return self.tau_spline(x)
 
-    def dtaudx_of_x(self, x):
-        if not hasattr(self, "dtaudx_of_x_spline"):
-            raise NameError("The spline dtaudx_of_x_spline has not been created")
-        return self.dtaudx_of_x_spline(x)
+    def dtau(self, x):
+        if not hasattr(self, "tau_spline"):
+            raise NameError("The spline tau_spline has not been created")
+        return self.dtau_spline(x)
 
-    def ddtauddx_of_x(self, x):
-        if not hasattr(self, "ddtauddx_of_x_spline"):
-            raise NameError("The spline ddtauddx_of_x_spline has not been created")
-        return self.ddtauddx_of_x_spline(x)
+    def d2tau(self, x):
+        if not hasattr(self, "tau_spline"):
+            raise NameError("The spline tau_spline has not been created")
+        return self.d2tau_spline(x)
 
-    def g_tilde_of_x(self, x):
-        if not hasattr(self, "g_tilde_of_x_spline"):
-            raise NameError("The spline g_tilde_of_x_spline has not been created")
-        return self.g_tilde_of_x_spline(x)
+    def d3tau(self, x):
+        if not hasattr(self, "tau_spline"):
+            raise NameError("The spline tau_spline has not been created")
+        return self.d3tau_spline(x)
 
-    def dgdx_tilde_of_x(self, x):
-        if not hasattr(self, "dgdx_tilde_of_x_spline"):
-            raise NameError("The spline dgdx_tilde_of_x_spline has not been created")
-        return self.dgdx_tilde_of_x_spline(x)
+    def g_tilde(self, x):
+        if not hasattr(self, "tau_spline"):
+            raise NameError("The spline tau_spline has not been created")
+        return -self.dtau(x) * np.exp(-self.tau(x))
 
-    def ddgddx_tilde_of_x(self, x):
-        if not hasattr(self, "ddgddx_tilde_of_x_spline"):
-            raise NameError("The spline ddgddx_tilde_of_x_spline has not been created")
-        return self.ddgddx_tilde_of_x_spline(x)
+    def dg_tilde(self, x):
+        if not hasattr(self, "tau_spline"):
+            raise NameError("The spline tau_spline has not been created")
+        return (self.dtau(x) ** 2 - self.d2tau(x)) * np.exp(-self.tau(x))
+
+    def d2g_tilde(self, x):
+        if not hasattr(self, "tau_spline"):
+            raise NameError("The spline tau_spline has not been created")
+        t = self.tau(x)
+        dt = self.dtau(x)
+        d2t = self.d2tau(x)
+        d3t = self.d3tau(x)
+        return (-(dt**3) + 3 * dt * d2t - d3t) * np.exp(-t)
 
     def Xe_of_x(self, x):
         if not hasattr(self, "log_Xe_of_x_spline"):
@@ -139,7 +148,7 @@ class RecombinationHistory:
         """
         self.solve_number_density_electrons()
 
-        # self.solve_for_optical_depth_tau()
+        self.solve_for_optical_depth_tau()
 
         # Compute z_star (peak of visibility function or tau = 1)
         # XXX TODO XXX
@@ -151,24 +160,17 @@ class RecombinationHistory:
         """
         Make some useful plots
         """
-
         npts = 10000
         xarr = np.linspace(self.x_start, self.x_end, num=npts)
         Xe = self.Xe_of_x(xarr)
         ne = self.ne_of_x(xarr)
-        # tau = [self.tau_of_x(xarr[i]) for i in range(npts)]
-        # dtaudx = [-self.dtaudx_of_x(xarr[i]) for i in range(npts)]
-        # ddtauddx = [self.ddtauddx_of_x(xarr[i]) for i in range(npts)]
-        # g_tilde = self.g_tilde_of_x(xarr)
-        # dgdx_tilde = self.dgdx_tilde_of_x(xarr)
-        # ddgddx_tilde = self.ddgddx_tilde_of_x(xarr)
+        tau = self.tau(xarr)
+        dtaudx = -self.dtau(xarr)
+        ddtaudx = self.d2tau(xarr)
 
-        # Recombination g_tilde
-        # plt.xlim(-7.5, -6.5)
-        # plt.ylim(-4, 6)
-        # plt.title("Visibility function and derivatives close to recombination")
-        # plt.plot(xarr, g_tilde, xarr, dgdx_tilde / 15.0, xarr, ddgddx_tilde / 300.0)
-        # plt.show()
+        g_tilde = self.g_tilde(xarr)
+        dgdx_tilde = self.dg_tilde(xarr)
+        ddgddx_tilde = self.d2g_tilde(xarr)
 
         # Reionization g_tilde
         # plt.xlim(-2.7, -2.0)
@@ -176,6 +178,40 @@ class RecombinationHistory:
         # plt.title("Visibility function and derivatives close to reionization")
         # plt.plot(xarr, g_tilde, xarr, dgdx_tilde / 15.0, xarr, ddgddx_tilde / 300.0)
         # plt.show()
+
+        # Recombination g_tilde
+        fig, axs = plt.subplots(ncols=3, figsize=(2 * apsw, 0.7 * apsw))
+
+        fig.suptitle("Visibility function and derivatives close to recombination")
+
+        ax = axs[0]
+        ax.set_title("g_tilde")
+        ax.plot(xarr, g_tilde)
+
+        ax = axs[1]
+        ax.set_title("dgdx_tilde")
+        ax.plot(xarr, dgdx_tilde)
+
+        ax = axs[2]
+        ax.set_title("ddgddx_tilde")
+        ax.plot(xarr, ddgddx_tilde)
+
+        # ax.legend()
+
+        fig.savefig(path.join(url, "g_tilde"))
+        plt.close(fig)
+
+        fig, ax = plt.subplots(figsize=(apsw, 0.7 * apsw))
+        ax.set_title("Tau and derivatives")
+        ax.plot(xarr, tau, label="tau")
+        ax.plot(xarr, dtaudx, label="dtaudx")
+        ax.plot(xarr, ddtaudx, label="ddtaudx")
+        ax.set_yscale("log")
+
+        ax.legend()
+
+        fig.savefig(path.join(url, "tau"))
+        plt.close(fig)
 
         fig, axs = plt.subplots(nrows=2, figsize=(apsw, 1.5 * apsw))
 
@@ -195,11 +231,6 @@ class RecombinationHistory:
         plt.close(fig)
 
         # # tau
-        # plt.yscale("log")
-        # plt.title("Tau and derivatives")
-        # plt.ylim(1e-8, 1e8)
-        # plt.plot(xarr, tau, xarr, dtaudx, xarr, ddtauddx)
-        # plt.show()
 
     # =========================================================================
     # =========================================================================
@@ -234,85 +265,6 @@ class RecombinationHistory:
 
         self.log_Xe_of_x_spline = interpolate.make_interp_spline(x, np.log(Xe))
         self.log_ne_of_x_spline = interpolate.make_interp_spline(x, np.log(ne))
-
-        # # Calculate recombination history
-        # for i in range(npts):
-        #     # Current scale factor
-        #     x = x_array[i]
-        #     a = np.exp(x)
-
-        #     # ==============================================================
-        #     # Get f_e from solving the Saha equation
-        #     # ==============================================================
-        #     Xe_current, ne_current = self.electron_fraction_from_saha_equation(x)
-
-        #     # Two regimes: Saha and Peebles regime
-        #     if Xe_current > self.Xe_saha_limit:
-
-        #         # Store the results from the Saha equation
-        #         Xe_arr[i] = Xe_current
-        #         ne_arr[i] = ne_current
-
-        #     else:
-
-        #         # ==============================================================
-        #         # We need to solve the Peebles equation for the rest of the time
-        #         # ==============================================================
-
-        #         # Make x-array for Peebles system from current time till the end
-        #         # XXX TODO XXX
-
-        #         # Set initial conditions
-        #         # XXX TODO XXX
-
-        #         # Solve the Peebles ODE
-        #         # XXX TODO XXX
-
-        #         # Fill up array with the result
-        #         # XXX TODO XXX
-
-        #         # We are done so exit for loop
-        #         break
-
-        # Make splines of log(Xe) and log(ne) as function of x = log(a)
-        # XXX TODO XXX
-        # self.log_Xe_of_x_spline = CubicSpline(x_array, np.log(Xe_arr))
-        # self.log_ne_of_x_spline = CubicSpline(x_array, np.log(ne_arr))
-
-        return
-
-    def solve_for_optical_depth_tau(self):
-        """
-        Solve for the optical depth tau(x) by integrating up
-        dtaudx = -c sigmaT ne/H
-        (PhD: Include the effects of reionization if z_reion > 0)
-        """
-
-        # Set up x_array
-        # XXX TODO XXX
-
-        # Set initial conditions for tau
-        # XXX TODO XXX
-
-        # Solve the tau ODE and normalize it such that tau(0) = 0.0
-        # XXX TODO XXX
-
-        # Spline it up
-        # XXX TODO XXX
-        # self.tau_of_x_spline = CubicSpline(x_array, tau)
-
-        # Compute and spline the derivatives of tau
-        # XXX TODO XXX
-        # self.dtaudx_of_x_spline = CubicSpline(x_array, dtaudx)
-        # self.ddtauddx_of_x_spline = CubicSpline(x_array, ddtauddx)
-
-        # Compute and spline visibility function and it derivatives
-        # XXX TODO XXX
-        # self.g_tilde_of_x_spline  = CubicSpline(x_array, g_tilde_of_x)
-        # self.dgdx_tilde_of_x_spline = CubicSpline(x_array, dgdx_tilde_of_x)
-        # self.ddgddx_tilde_of_x_spline = CubicSpline(x_array, ddgddx_tilde_of_x)
-
-        return
 
     def _n_H(self, x):
         return self.cosmo.OmegaB0 * self.cosmo.rhoc0 / (const.m_H * np.exp(3 * x))
@@ -399,12 +351,40 @@ class RecombinationHistory:
         assert sol.success, f"Peebles ivp failed, {sol.message}"
         return sol.y.flatten()
 
-    def rhs_tau_ode(self, x, y):
+    def _dtau_dx(self, x, tau):
         """
-        Right hand side of the optical depth ODE dtaudx = RHS
+        Right hand side of the optical depth ODE -dtaudx = RHS
         """
+        return -(const.c * self.ne_of_x(x) * const.sigma_T) / (self.cosmo.H(x))
 
-        # Set the right hand side
-        # XXX TODO XXX
-        dtaudx = 1.0
-        return dtaudx
+    def solve_for_optical_depth_tau(self):
+        """
+        Solve for the optical depth tau(x) by integrating up
+        dtaudx = -c sigmaT ne/H
+        (PhD: Include the effects of reionization if z_reion > 0)
+        """
+        # reverse_derivative = lambda neg_x, tau: -self._dtau_dx(-neg_x, tau)
+
+        x = np.linspace(0, self.x_start, num=self.npts)
+
+        sol = integrate.solve_ivp(
+            self._dtau_dx,
+            # reverse_derivative,
+            (0, self.x_start),
+            [
+                0,
+            ],
+            t_eval=x,
+            rtol=1e-5,
+            atol=1e-10,
+        )
+
+        assert sol.success, f"Tau ivp failed, {sol.message}"
+
+        tau = sol.y.flatten()
+
+        self.tau_spline = interpolate.make_interp_spline(x[::-1], tau[::-1])
+
+        self.dtau_spline = self.tau_spline.derivative()
+        self.d2tau_spline = self.tau_spline.derivative(2)
+        self.d3tau_spline = self.tau_spline.derivative(3)
