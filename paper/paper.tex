@@ -6,7 +6,7 @@
 % Choose pra, prb, prc, prd, pre, prl, prstab, prstper, or rmp for journal
 %  Add 'draft' option to mark overfull boxes with black boxes
 %  Add 'showkeys' option to make keywords appear
-\documentclass[aps,prl,twocolumn,groupedaddress]{revtex4-2}
+\documentclass[aps,prl,twocolumn,groupedaddress,nofootinbib]{revtex4-2}
 \usepackage{graphicx}
 \usepackage{amsmath}
 %\documentclass[aps,prl,preprint,superscriptaddress]{revtex4-2}
@@ -21,6 +21,7 @@
 
 % Helpful cosmology math commands
 \newcommand{\Oi}{\Omega_i}
+\newcommand{\Oio}{\Omega_{i,0}}
 \newcommand{\Om}{\Omega_m}
 \newcommand{\Omo}{\Omega_{m,0}}
 \newcommand{\Or}{\Omega_r}
@@ -33,7 +34,6 @@
 \newcommand{\der}[2][]{\frac{d#1}{d#2}}
 \newcommand{\dd}[2][]{\frac{d^2#1}{d#2^2}}
 
-
 \begin{document}
 
 % Use the \preprint command to place your local institutional report
@@ -44,7 +44,7 @@
 %\preprint{}
 
 %Title of paper
-\title{}
+\title{Codes for the $\Lambda$CDM \\ \normalsize AST5220 Final Project}
 
 % repeat the \author .. \affiliation  etc. as needed
 % \email, \thanks, \homepage, \altaffiliation all apply to the current
@@ -56,8 +56,8 @@
 % \affiliation command. The \affiliation command should follow the
 % other information
 % \affiliation can be followed by \email, \homepage, \thanks as well.
-\author{Simon Silverstein}
-\email[]{simon.silverstein@fys.uio.no}
+\author{Simon Silverstein (\#707626)}
+% \email[]{simon.silverstein@fys.uio.no}
 %\homepage[]{Your web page}
 %\thanks{}
 %\altaffiliation{}
@@ -73,7 +73,7 @@
 \date{\today}
 
 \begin{abstract}
-    % insert abstract here
+    We present code for parameter estimation for $\Lambda$CDM cosmology. \textit{NOTE: This project}\footnote{This project was completed without writing or coding assistance from Large Language Models (LLMs). LLMs were used exclusively for solving issues with PDF compilation.} \textit{and its codes}\footnote{\href{https://github.com/simonmso/cosmosim}{https://github.com/simonmso/cosmosim}} \textit{are a work in progress. Milestones II, III, and IV to come. }
 \end{abstract}
 
 % insert suggested keywords - APS authors don't need to do this
@@ -86,86 +86,260 @@
 % References should be done using the \cite, \ref, and \label commands
 \section{Milestone I}
 \subsection{Introduction}
-\subsection{Theory}
-
-\subsection{Tests}
-
+The leading theory of cosmology is the $\Lambda$CDM model, which describes an expanding universe whose main components are (in order of energy density today) dark energy, matter, radiation, and curvature. Constraining the evolution of this universe requires solving a set of differential equations and fitting the solutions to observed data. In this milestone, we present an overview of the theory for the evolution of a homogeneous, isotropic universe. We introduce tests that a code describing this evolution would have to pass, and demonstrate that our code passes them. Finally, we perform an MCMC simulation of the theory for supernova luminosity distances and present the resulting parameter estimates.
+\subsection{Theory\footnote{Many of these equations have been lifted directly from the AST5220 course page (\href{https://cmb.wintherscoming.no}{https://cmb.wintherscoming.no}) as recommended.}}
+The foundational observation of cosmology is the expansion of the universe, driven by its energy content and composition. We track the expansion with scale factor $a(t)$, defined so $a(t_{\rm today})\equiv a_0\equiv 1$, and observe also the rate of expansion $\dot{a}$ and the \textit{Hubble parameter} $H\equiv\dot{a}/a$. The Friedmann equation governs this expansion; for an energy density $\rho$, the expansion evolves as
 \begin{equation}
-    H=H_0\sqrt{\Omo a^{-3} + \Oro a^{-4} + \Oko a^{-2} + \Olo}
+    \label{eq:fried_basic}
+    H^2=\frac{8\pi G}{3}\rho,
+\end{equation}
+where $G$ is the gravitational constant. $\rho$ is further broken down as the sum of components $\rho=\sum \rho_i$ (for $i$ of matter, radiation, etc.). (\ref{eq:fried_basic}) may be rearranged so that for a given expansion $H$, a \textit{critical density} $\rho_c=3H^2/8\pi G$ of energy is necessary to drive it. It is then simpler to describe the composition of the universe in terms of what fraction of the critical density $\Omega_i=\rho_i/\rho_c$ each component takes up.
+
+The components we consider in this milestone are radiation $\Or$, which includes neutrinos (since the energy of a neutrino is dominated by relativistic momentum), matter $\Om$, which includes all other matter familiar to us as well as dark matter, and dark energy $\Ol$, an energy density that is constant across all $a$. We also treat any overall curvature of the universe as an energy fraction
+\begin{equation*}
+    \Omega_{k,0} = -\frac{kc^2}{H_0^2}
+\end{equation*}
+for curvature parameter $k$ since it affects the evolution of the universe similarly. Each of these components evolves with $a$ as
+\begin{align}
+    \begin{split}
+        \label{eq:Omegas}
+        \Omega_{k}(a)       & = \frac{\Omega_{k,0}}{a^2H(a)^2/H_0^2}     \\
+        \Omega_{m}(a)       & = \frac{\Omega_{m,0}}{a^3H(a)^2/H_0^2}     \\
+        \Omega_r(a)         & = \frac{\Omega_{r,0}}{a^4H(a)^2/H_0^2}     \\
+        \Omega_{\Lambda}(a) & = \frac{\Omega_{\Lambda 0}}{H(a)^2/H_0^2},
+        % \Omega_{\rm CDM}(a) &= \frac{\Omega_{\rm CDM 0}}{a^3H(a)^2/H_0^2} \\
+        % \Omega_b(a) &= \frac{\Omega_{b 0}}{a^3H(a)^2/H_0^2} \\
+        % \Omega_\gamma(a) &= \frac{\Omega_{\gamma 0}}{a^4H(a)^2/H_0^2} \\
+        % \Omega_{\nu}(a) &= \frac{\Omega_{\nu 0}}{a^4H(a)^2/H_0^2} \\
+    \end{split}
+\end{align}
+with subscript 0 indicating the value today. Our Friedmann equation then takes the form
+\begin{equation}
+    \label{eq:friedmann}
+    H=H_0\sqrt{\Omo a^{-3} + \Oro a^{-4} + \Oko a^{-2} + \Olo}.
+\end{equation}
+We often use instead the unitless parameter $h$, defined so that $H=h\times(100\times\rm km/s/Mpc)$. Since $a$ spans many orders of magnitude from the birth of the universe to today, we do much of our numerical work with the quantity $x \equiv \ln a$. It is also useful when working with experimental data to use the redshift $z(t)$, the fractional change in wavelength of a photon emitted at $t$ and observed today. It is related to $a$ as
+\begin{equation}
+    1+z = \frac{a_0}{a(t)}.
 \end{equation}
 
-$H(a)$
-
+Maybe the first question anyone ever asked about the universe is ``how big is it?" This is of course meaningless; the only reasonable question we can answer is `how big is the bit we can see?' Consider a photon emitted at the beginning; the size of the observable universe is the distance that photon travelled since then, known as the \textit{horizon size} or \textit{conformal distance} $\eta$. This is complicated by the fact that earlier on the universe was smaller by factor $a$; for our calculation this is the same as the photon moving $1/a$ times faster. The infinitesimal distance $d\eta$ is then velocity times infinitesimal time $d\eta=(c/a)dt$, or
+\begin{equation*}
+    \der[\eta]{t} = \frac{c}{a(t)}.
+\end{equation*}
+Using the definition of $H$, introducing $\Hp\equiv aH$, and changing variables, this is equivalent to
+\begin{equation}
+    \label{eq:eta}
+    \der[\eta]{x} = \frac{c}{\Hp}.
+\end{equation}
+From the definitions of $H$ and $x$ it is also easy to obtain
 \begin{align}
-    \Om \to 1 & : H_0\sqrt{\Omo}a^{-3/2} \\
-    \Or \to 1 & :  H_0\sqrt{\Oro}a^{-2}  \\
-    \Ol \to 1 & :  H_0\sqrt{\Olo}        \\
+    \label{eq:t}
+    \frac{dt}{dx} = \frac{1}{H}.
 \end{align}
+These two differential equations are valuable. By evolving them numerically (or for special cases solving them analytically), we get $a(t)$, $\eta(t)$, $H(t)$, and derivatives thereof; all the essentials needed to describe the composition of energy over the course of our universe's history.
 
-$\frac{1}{\Hp}\der[\Hp]{x}$
-
+Often we care about light that was emitted sometime between the beginning and now. For light emitted at time $t$ and observed by us, the \textit{comoving distance} is
+\begin{align*}
+    % \label{eq:chi}
+    \chi(t) = \eta_0 - \eta(t)
+\end{align*}
+(\textit{comoving} because it is constant between points moving along with the expanding universe). Note that this does not take curvature into account; with curvature, the line-of-sight distance (or \textit{comoving radius}) $r$ between us and the light source is
+\begin{align*}
+    % \label{eq:r}
+    r & = \begin{cases}
+              \chi \cdot \frac{\sin \left( \sqrt{|\Omega_{k 0}}| H_0 \chi /c \right)}{\left(\sqrt{|\Omega_{k 0}|}H_0\chi / c\right)}
+               & \Omega_{k 0} < 0  \\
+              \chi
+               & \Omega_{k 0} =0   \\
+              \chi \cdot \frac{\sinh \left( \sqrt{|\Omega_{k 0}|} H_0 \chi / c\right)}{\left(\sqrt{|\Omega_{k 0}|}H_0\chi / c\right) }
+               & \Omega_{k 0} > 0.
+          \end{cases}
+\end{align*}
+Our models are often fit using `standard candles' which have near-identical luminosity, allowing us to calculate distances from flux measurements. At a \textit{luminosity distance} $d_L$ for a luminosity $L$, the observed flux is $L$ divided by the surface area at that distance $F=L/4\pi d_L^2$. Today, $d_L$ is just the comoving radius $r$; in the past these standard candles seem \textit{further} from us than they are since the expansion of the universe has further decreased the flux, and so we must divide by the scale factor to obtain
 \begin{align}
-    \Om \to 1 & : -\frac{1}{2} \\
-    \Or \to 1 & :  -1          \\
-    \Ol \to 1 & :  1           \\
+    \label{eq:dL}
+    d_L = \frac{r}{a}.
 \end{align}
+Through the course of this project, we use a fiducial cosmology as a point of comparison. We use the parameter estimates from \textit{Planck 2018} \cite{aghanim_planck_2020}, most importantly\footnote{The value for $\Oro$ is equivalent to CMB temperature $T_{\rm CMB}=2.725$ K and effective massless neutrino number $N_{\rm eff}=3.046$}
+\begin{align*}
+    \Omo & = 0.313                 \\
+    \Oko & = 0                     \\
+    \Oro & = 9.346\times 10^{-5}   \\
+    \Olo & = 0.6869                \\
+    H_0  & = 66.88 {\rm km/s/Mpc}.
+\end{align*}
 
-$\frac{1}{\Hp}\dd[\Hp]{x}$
 
+\subsection{Tests}
+Although the relationship between $H$ and $a$ (and also $x$) is nontrivial, one can construct scenarios in which $H$ and values derived from it have simple behavior. The easiest of these is when one component of energy dominates the Friedmann equation (\ref{eq:friedmann}), that is $\Oio \to 1$. In the limits of matter, radiation, and dark energy domination, the quantities $\Hp'/\Hp$, $\Hp''/\Hp$, and $\eta H/c$ all have simple behavior (here $\circ'\equiv\der{x}\circ$). We therefore use these quantities to test our code's implementation of $H$, $\Hp$, and their derivatives.
+
+To see what this simple behavior is, consider first the limit of $H$, given by Friedmann equation (\ref{eq:friedmann}). In the limits, (\ref{eq:friedmann}) goes to
+\begin{align*}
+    \Om \to 1 & : H(a)\to H_0\sqrt{\Omo}a^{-3/2} \\
+    \Or \to 1 & : H(a)\to H_0\sqrt{\Oro}a^{-2}   \\
+    \Ol \to 1 & : H(a)\to H_0\sqrt{\Olo}.
+\end{align*}
+Test (A) of our code is the quantity $\frac{1}{\Hp}\der[\Hp]{x}=\frac{\Hp'}{\Hp}$. We differentiate $\Hp(a)=aH(a)$ using the chain rule, divide by $\Hp(a)$, and apply the limits above to obtain
 \begin{align}
-    \Om \to 1 & : 1             \\
-    \Or \to 1 & :  -\frac{1}{4} \\
-    \Ol \to 1 & :  1            \\
+    \begin{split}
+        \label{eq:a}
+        \Om \to 1 & : \frac{\Hp'}{\Hp} \to -\frac{1}{2} \\
+        \Or \to 1 & : \frac{\Hp'}{\Hp} \to -1           \\
+        \Ol \to 1 & : \frac{\Hp'}{\Hp} \to 1.
+    \end{split}
 \end{align}
+Doing so again gives us test (B), for which the quantity $\frac{1}{\Hp}\dd[\Hp]{x}=\frac{\Hp''}{\Hp}$ goes to
+\begin{align}
+    \begin{split}
+        \label{eq:b}
+        \Om \to 1 & : \frac{\Hp''}{\Hp} \to 1            \\
+        \Or \to 1 & : \frac{\Hp''}{\Hp} \to -\frac{1}{4} \\
+        \Ol \to 1 & : \frac{\Hp''}{\Hp} \to 1.
+    \end{split}
+\end{align}
+Our last test is (C), where we note that in the radiation dominated era, the conformal time may be approximated $\eta(x)\approx c/\Hp(x)$. This gives us the nice result that for
+\begin{equation}
+    \label{eq:c}
+    \Or \to 1: \frac{\eta(x) \Hp(x)}{c} \to 1.
+\end{equation}
 
-$\Or \to 1$
-$\eta(x)\approx c/H(x)$
-$\eta(x) H(x) / c \to 1$
+To bookend the periods in which radiation, matter, or dark energy dominate, we mark the times at which two components are equal. For radiation-matter equality, we equate the expressions for $\Or$ and $\Om$ given in (\ref{eq:Omegas}) and solve for $x$, giving us
+\begin{equation}
+    \label{eq:rm}
+    x_{rm}=\ln{\frac{\Oro}{\Omo}}.
+\end{equation}
+We do the same procedure for matter and dark energy to obtain
+\begin{equation}
+    \label{eq:mlam}
+    x_{m\Lambda}=\frac{1}{3}\ln{\frac{\Omo}{\Olo}}.
+\end{equation}
+Since the fiducial cosmology has negligible curvature, we do not bother to implement expressions for curvature-component equality. Together, (\ref{eq:rm}) and (\ref{eq:mlam}) are also a useful test of our implementation of $\Oi(x)$.
 
-
-
-\begin{figure}[h]
-    \includegraphics[width=\columnwidth]{../results/milestone1/domination.png}
-    \caption{\label{fig:tests}(First plot) Share of total radiation $\Or$, matter $\Om$, and dark energy $\Ol$ with respect to $x$ as the fiducial universe evolves, including analytic $x$-values for radiation-matter (RM) and matter-dark energy (M$\Lambda$) equalities. The latter three plots compare the code's output to the analytic limits for tests (A), (B), and (C) in the text.}
+One similar quantity is the point at which the expansion of the universe begins to accelerate. This happens long after the era of radiation domination, so in calculating it we use the simplification $\Or\approx0$. From there, we differentiate the Friedmann equation with respect to time to obtain
+\begin{equation}
+    \label{eq:accel}
+    x_{\rm accel} = \frac{1}{3}\ln \left(\frac{1}{2}\frac{\Omo}{\Olo}\right).
+\end{equation}
+\begin{figure}
+    \includegraphics[width=\linewidth]{../results/milestone1/domination.png}
+    \caption{\label{fig:tests}(Top plot) Share of total radiation $\Or$, matter $\Om$, and dark energy $\Ol$ with respect to $x$ as the fiducial universe evolves, including analytic $x$-values for radiation-matter (RM) and matter-dark energy (M$\Lambda$) equalities (dashed lines). The latter three plots compare the code's output to the analytic limits for tests (A), (B), and (C) in the text (eq.s \ref{eq:a}, \ref{eq:b}, and \ref{eq:c}; marked by horizontal dashed lines).}
 \end{figure}
 
+Figure \ref{fig:tests} shows the energy breakdown of the fiducial universe during its evolution, along with the value of our three test quantities. Note first that qualitatively, the analytic radiation-matter and matter-dark energy equalities fall where their respective curves overlap. This is exactly as expected. Further, the three test quantities approach the analytic limits from (\ref{eq:a}), (\ref{eq:b}), and (\ref{eq:c}) respectively. Together, these demonstrate the successful implementation of $\Oi$, $H$, $\Hp$, and their derivatives in the code.
+
+\subsection{Parameter Estimation}
+We measure cosmological parameters using a Markov chain Monte Carlo (MCMC) simulation to estimate the probability distribution of a dataset of 31 type Ia supernovae \cite{betoule_improved_2014}. Each supernova has measured redshift $z$ and luminosity distance $d_L$ with uncertainties. We use the \verb|emcee| python package \cite{foreman-mackey_emcee_2013} to calculate the MCMC chain. We assume the errors $\{\sigma_{d_L}\}$ to be Gaussian-distributed, and therefore choose the logarithm of the likelihood to be
+\begin{equation}
+    \label{eq:log_likely}
+    \log p(d_L|\theta)\propto-\frac{1}{2}\frac{(d_{L} - \hat{d}_{L})^2}{\sigma_{d_L}^2}
+    + \log(2\pi \sigma_{d_L}^2),
+\end{equation}
+where $\hat{d}_L$ is the predicted luminosity distance given parameters $\theta$, and the total log-likelihood is the sum of log-likelihoods from each supernova. We use a uniform prior with the logarithm
+\begin{equation}
+    \label{eq:log_prior}
+    \log p(\theta)\propto
+    \begin{cases}
+                & 0.1 < h_0 < 1.5,    \\
+        0       & 0 \leq \Omo \leq 1, \\
+                & -1 \leq \Oko \leq 1 \\
+        -\infty & \text{otherwise.}
+    \end{cases}
+\end{equation}
+We derive $\Olo$ from $\sum\Oio=1$. Each chain starts at $\theta_{\rm start}=(h_0,\Omo,\Oko)=(0.7,0.3,10^{-5})$, with $\Oro$ fixed at the fiducial $\Oro = 8.532\times 10^{-5}$.
+
+As recommended by the package authors, we estimate the integrated autocorrelation time $\tau$ and only consider chains run for over $50\tau$ to be trustworthy. We also discard the first $\approx\tau$ samples as `burn-in,' so that our final distributions are not biased towards the starting position.
+
+To calculate $\hat{d}_L$, we evolve (\ref{eq:eta}) and (\ref{eq:t}) numerically from very early times ($a\approx10^{-8}$) with the initial conditions $\eta(x_{\rm start})=c/\Hp(x_{\rm start})$ and $t(x_{\rm start})=1/2H(x_{\rm start})$. We then fit a polynomial spline to the result so that we may calculate $\eta(x)$ for any $x$.
 \subsection{Results}
-\begin{figure}[h]
-    \includegraphics[width=\columnwidth]{../results/milestone1/h0_hist.png}
-    \caption{\label{fig:h0}Distribution of samples of $h_0$ from the Monte Carlo fit to supernova luminosity distances. The solid red line marks the 50th percentile, the dotted lines the 18th and 82nd (values reported in table \ref{tk}). The fiducial value of $h_0=0.7$ (tk check if true) is included for reference.}
+\begin{table}
+    \caption{\label{tab:results}Summary of parameter estimates from MCMC on supernova data. $\theta_{\rm best}$ is the value with the highest likelihood, with 68\% of samples falling on the interval $(\theta_{\rm best} - \sigma_-, \theta_{\rm best} + \sigma_+)$.}
+    \begin{ruledtabular}
+        \begin{tabular}{l r}
+            $\theta$                  & $\theta_{\rm best}$ $\sigma_+/-\sigma_-$ \\
+            \hline
+            \footnotesize{Sampled parameters}                                    \\
+            $h_0$                     & 0.7013 +0.0065/-0.0060                   \\
+            $\Omega_{m,0}$            & 0.2559 +0.1104/-0.1122                   \\
+            $\Omega_{k,0}$            & 0.0800 +0.2806/-0.2752                   \\
+            \hline
+            \footnotesize{Derived parameters}                                    \\
+            $\Omega_{\Lambda,0}$      & 0.6640 +0.1709/-0.1740                   \\
+            $\Omega_{m,0}h_0^2$       & 0.1259 +0.0561/-0.0559                   \\
+            $\Omega_{\Lambda,0}h_0^2$ & 0.3266 +0.0900/-0.0887                   \\
+        \end{tabular}
+    \end{ruledtabular}
+\end{table}
+\begin{table}
+    \vspace{1em}
+    \begin{ruledtabular}
+        \caption{\label{tab:best}Summary of features of the most-likely cosmology.}
+        \begin{tabular}{l r}
+            Feature                      & Value                       \\
+            \hline
+            Age $t(x=0)$                 & 13.67 (Gyr.)                \\
+            Conformal time $\eta(x=0)/c$ & 47.16 (Gyr.)                \\
+            \hline
+            \footnotesize{Radiation-Matter equality}                   \\
+            $x_{\rm rm}$                 & -8.010                      \\
+            $z_{\rm rm}$                 & 3010                        \\
+            $t_{\rm rm}$                 & 6.520$\times10^{-5}$ (Gyr.) \\
+            \hline
+            \footnotesize{Acceleration begins}                         \\
+            $x_{\rm accel.}$             & -0.5489                     \\
+            $z_{\rm accel.}$             & 0.7313                      \\
+            $t_{\rm accel.}$             & 7.203 (Gyr.)                \\
+            \hline
+            \footnotesize{Matter-Dark Energy equality}                 \\
+            $x_{\rm m\Lambda}$           & -0.3178                     \\
+            $z_{\rm m\Lambda}$           & 0.3741                      \\
+            $t_{\rm m\Lambda}$           & 9.609 (Gyr.)                \\
+        \end{tabular}
+    \end{ruledtabular}
+\end{table}
+
+The results of the MCMC simulation are summarized in Table \ref{tab:results}. Features of the highest-likelihood cosmology are summarized in Table \ref{tab:best}. Figure \ref{fig:h0} shows the distribution of samples for $h_0$, including the fiducial value of $h_0=0.6688$. The two are in complete disagreement; notice that the fiducial value falls well outside the entire distribution of samples. This is rather alarming. We choose not to speculate on why these two disagree (there are plenty of more qualified people paid to do so), and note only that the fiducial value was measured from a \textit{significantly} earlier point in our universe's history than the supernovae, meaning there is plenty of room for new theories.
+
+Figure \ref{fig:2dhist} shows the distribution for parameters $\Omo$ and $\Olo$. Unlike the distribution for $h_0$, the highest-likelihood values are in close agreement with the fiducial cosmology. However, these parameters are much more poorly constrained, with 95\% intervals that span $\pm100\%$ of the highest-likelihood value. We therefor cannot say that more sensitive tests would not also cause disagreement here.
+\begin{figure}
+    \includegraphics[width=\linewidth]{../results/milestone1/h0_hist.png}
+    \caption{\label{fig:h0}Histogram of samples of $h_0$ from the Monte Carlo fit to supernova luminosity distances ($n_{\rm bins}=50$). The solid red line marks the highest likelihood value, the dotted lines the 18th and 82nd percentiles (values reported in table \ref{tab:results}). The fiducial value of $h_0=0.6688$ (black line) is included for reference.}
+\end{figure}
+\begin{figure}
+    \includegraphics[width=\linewidth]{../results/milestone1/omega_hist_MLam.png}
+    \caption{\label{fig:2dhist}Histogram of samples of $\Olo$ and $\Omo$ from the Monte Carlo supernovae fit ($n_{\rm bins}=100\times100$). The red `x' marks the sample with the highest likelihood, and 68\% and 95\% of the samples fall within the inner and outer dashed lines respectively (values reported in table \ref{tab:results}). The fiducial value of $\Omo=0.313, \Olo\approx0.69$ (black star) is included for reference. }
 \end{figure}
 
-\begin{figure}[h]
-    \includegraphics[width=\columnwidth]{../results/milestone1/omega_hist_MLam.png}
-    \caption{\label{fig:2dhist}Distribution of samples of $\Olo$ and $\Omo$ from the Monte Carlo supernovae fit. The red $x$ marks the sample with the highest likelihood, and 64\% and 95\% (tk check) of the samples fall within the inner and outer dashed lines respectively (values reported in table \ref{tk}). The fiducial value of $\Omo=0.3, \Olo\approx0.7$ (tk check) is included for reference. }
+Figure \ref{fig:supernovae} plots $d_L$ for our best cosmology alongside the supernova data to which it was fit. At these low redshifts, there is little qualitative difference between the best cosmology and the fiducial cosmology. The fact that for all universes $d_L$ is linear with $z$ in the low-$z$ limit is the reason for our poor constraining ability.
+\begin{figure}
+    \includegraphics[width=\linewidth]{../results/milestone1/supernovea.png}
+    \caption{\label{fig:supernovae}Luminosity distance $d_L(z)$ vs. redshift $z$ for the fiducial cosmology and for the highest likelihood cosmology from MCMC simulations (`Best'; see table \ref{tab:results}). Measures of $d_L(z)$ with experimental uncertainty are plotted for the 31 supernovae fit by the MCMC simulation. }
 \end{figure}
 
-\begin{figure}[h]
-    \includegraphics[width=\columnwidth]{../results/milestone1/supernovea.png}
-    \caption{\label{fig:supernovea}Luminosity distance $d_L(z)$ vs. redshift $z$ for the fiducial cosmology and for the highest likelihood cosmology from MCMC simulations (`Best'; see table \ref{tk}). Measures of $d_L(z)$ with experimental uncertainty are plotted for the 31 supernovae fit by the MCMC simulation. }
+Figure \ref{fig:eta} reports the conformal time $\eta/c$ for our cosmology alongside a `toy' cosmology of $\Omo=0.5,\Olo\approx0.5,T_{\rm CMB}=2.725$ K for comparison. This same `toy' cosmology is included in Figure \ref{fig:Hp}, which demonstrates that although the expansion of the universe has long been slowing down, it has relatively recently begun accelerating again.
+\begin{figure}
+    \includegraphics[width=\linewidth]{../results/milestone1/eta.png}
+    \caption{\label{fig:eta}Conformal time $\eta(x)/c$ for the best cosmology from the MCMC simulation, the fiducial cosmology, and, for comparison, a `toy' cosmology of $\Omo=0.5,\Olo\approx0.5,T_{\rm CMB}=2.725$ K. Note that the `Best' line lies almost entirely beneath the fiducial.}
 \end{figure}
 
-\begin{figure}[h]
-    \includegraphics[width=\columnwidth]{../results/milestone1/eta.png}
-    \caption{\label{fig:eta}Conformal time $\eta(x)/c$ for the best cosmology from the MCMC simulation, the fiducial cosmology, and, for comparison, a `toy' cosmology of $\Omo=tk,\Olo=tk,T_{CMB}=2.7tk$. Note that the `Best' line lies almost entirely beneath the fiducial.}
+\begin{figure}
+    \includegraphics[width=\linewidth]{../results/milestone1/Hp.png}
+    \caption{\label{fig:Hp}$\Hp(x)$ for the best cosmology from the MCMC simulation, the fiducial cosmology, and, for comparison, a `toy' cosmology of $\Omo=0.5,\Olo\approx0.5,T_{\rm CMB}=2.725$ K. Note that the `Best' line lies almost entirely beneath the fiducial.}
 \end{figure}
 
-\begin{figure}[h]
-    \includegraphics[width=\columnwidth]{../results/milestone1/Hp.png}
-    \caption{\label{fig:Hp}$\Hp(x)$ for the best cosmology from the MCMC simulation, the fiducial cosmology, and, for comparison, a `toy' cosmology of $\Omo=tk,\Olo=tk,T_{CMB}=2.7tk$. Note that the `Best' line lies almost entirely beneath the fiducial.}
-\end{figure}
+Finally, Figure \ref{fig:t} shows our numerical solution to (\ref{eq:t}) for the best, fiducial, and toy cosmologies.
 
-
-\begin{figure}[h]
-    \includegraphics[width=\columnwidth]{../results/milestone1/t.png}
-    \caption{\label{fig:t}Age of the universe $t(x)$ for the best cosmology from the MCMC simulation, the fiducial cosmology, and, for comparison, a `toy' cosmology of $\Omo=tk,\Olo=tk,T_{CMB}=2.7tk$. The current age of the universe $t(0)$ for the `best' model is $t=tk$ Gyr., as reported in table \ref{tk}. Note that the `Best' line lies almost entirely beneath the fiducial.}
+\begin{figure}
+    \includegraphics[width=\linewidth]{../results/milestone1/t.png}
+    \caption{\label{fig:t}Age of the universe $t(x)$ for the best cosmology from the MCMC simulation, the fiducial cosmology, and, for comparison, a `toy' cosmology of $\Omo=0.5,\Olo\approx0.5,T_{\rm CMB}=2.725$ K. The current age of the universe $t(0)$ for the `best' model is $t=13.67$ Gyr., as reported in table \ref{tab:results}. Note that the `Best' line lies almost entirely beneath the fiducial.}
 \end{figure}
 
 
+Broadly, these parameter estimates support the prevailing theory of a universe dominated by a cosmological constant $\Lambda$, with the remaining energy density today coming from matter (remember that we fixed $\Oro$ to the value derived from CMB temperature measurements). We cannot rule out curvature, though it is most likely to be negligible. With the limited data we have here, we are unable to distinguish between baryonic and dark matter.
 
 
-
-
+\bibliographystyle{apsrev4-2}
+\bibliography{AST5220}
 
 
 
@@ -223,10 +397,10 @@ $\eta(x) H(x) / c \to 1$
 % reasonable default table settings.
 % Use the table* environment to get a full-width table in two-column
 % Add \usepackage{longtable} and the longtable (or longtable*}
-% environment for nicely formatted long tables. Or use the the [H]
+% environment for nicely formatted long tables. Or use the the 
 % placement option to break a long table (with less control than 
 % in longtable).
-% \begin{table}%[H] add [H] placement to break table across pages
+% \begin{table}% add  placement to break table across pages
 % \caption{\label{}}
 % \begin{ruledtabular}
 % \begin{tabular}{}

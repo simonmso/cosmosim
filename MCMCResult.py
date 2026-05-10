@@ -12,11 +12,16 @@ class MCMCResult:
         labels=None,
         fiducial=None,
     ):
+        """
+        chain: shape of (# parameters, # samples)
+        """
         self.chain = np.array(chain)
         self.log_prob = log_prob
         self.labels = labels
         self.fiducial = fiducial
-        self.best = np.quantile(self.chain, 0.5, axis=1)
+        # self.best = np.quantile(self.chain, 0.5, axis=1)
+        self.best_idx = np.argmax(self.log_prob)
+        self.best = [c[self.best_idx] for c in self.chain]
 
     def hist2d(self, q=[0.95, 0.68]):
         fig, ax = plt.subplots(figsize=(apsw, 0.9 * apsw))
@@ -113,6 +118,8 @@ class MCMCResult:
             minus = self.best[i] - quantiles[0]
 
             if self.labels:
-                print(f"{quantiles[1]:.4f} +{plus:.4f}/-{minus:.4f} {self.labels[i]}")
+                print(
+                    f"{self.labels[i]:25} & {self.best[i]:.4f} +{plus:.4f}/-{minus:.4f} \\\\"
+                )
             else:
-                print(f"{quantiles[1]:.4f} +{plus:.4f}/-{minus:.4f}")
+                print(f"{self.best[i]:.4f} +{plus:.4f}/-{minus:.4f}")

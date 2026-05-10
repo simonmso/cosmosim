@@ -41,9 +41,9 @@ class BackgroundCosmology:
 
     def __init__(
         self,
-        h0=0.7,
+        h0=0.6688,
         OmegaB0=0.046,
-        OmegaCDM0=0.224,
+        OmegaCDM0=0.267,
         OmegaK0=0.0,
         name="FiducialCosmology",
         TCMB_in_K=2.725,
@@ -95,6 +95,7 @@ class BackgroundCosmology:
         # calculate equalities from analytic expressions
         self.x_rm = np.log(self.OmegaR0tot / self.OmegaM0)
         self.x_mlam = np.log(self.OmegaM0 / self.OmegaLambda0) / 3
+        self.x_accel = np.log(0.5 * self.OmegaM0 / self.OmegaLambda0) / 3
 
         # Settings for integration and splines of eta
         if x_pts is not None:

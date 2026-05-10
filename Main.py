@@ -5,6 +5,7 @@ import argparse
 import matplotlib.pyplot as plt
 
 from BackgroundCosmology import BackgroundCosmology
+from RecombinationHistory import RecombinationHistory
 
 """
 
@@ -41,39 +42,33 @@ cosmo = BackgroundCosmology(
     Neff=0.0,  # Effective number of neutrinos
 )
 
-# WORKING ON: decide on the best place to put sanity checks,
-# different universes, etc.
-
 # Solve and plot
 cosmo.info()
 cosmo.solve()
-if make_plots:
-    cosmo.plot(args.output)
-
-# Remove when done with milestone
-exit()
+# if make_plots:
+#     cosmo.plot(args.output)
 
 # Milestone 2: Solve the recombination history
 # ============================================
-# rec = RecombinationHistory.RecombinationHistory(
-#     BackgroundCosmology=cosmo,
-#     Yp=0.24,  # Primordial helium fraction
-#     reionization=True,  # Include reionization
-#     z_reion=11.0,  # Reionization redshift
-#     delta_z_reion=0.5,  # Reionization width
-#     helium_reionization=True,  # Helium double reionization
-#     z_helium_reion=3.5,  # Helium double reionization redshift
-#     delta_z_helium_reion=0.5,
-# )  # Helium double reionization width
+rec = RecombinationHistory(
+    BackgroundCosmology=cosmo,
+    Yp=0.24,  # Primordial helium fraction
+    reionization=True,  # Include reionization
+    z_reion=11.0,  # Reionization redshift
+    delta_z_reion=0.5,  # Reionization width
+    helium_reionization=True,  # Helium double reionization
+    z_helium_reion=3.5,  # Helium double reionization redshift
+    delta_z_helium_reion=0.5,
+)  # Helium double reionization width
 
 # # Solve and plot
-# rec.info()
-# rec.solve()
-# if show_plots:
-#     rec.plot()
+rec.info()
+rec.solve()
+if make_plots:
+    rec.plot(args.output)
 
 # # Remove when done with milestone
-# exit()
+exit()
 
 
 # # Milestone 3: Integrate the perturbations

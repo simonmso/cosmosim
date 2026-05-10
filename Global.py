@@ -194,7 +194,7 @@ class ConstantsAndUnits:
 
 
 # Make a global constants
-const = ConstantsAndUnits("Cosmology")
+const = ConstantsAndUnits("Planck")
 const.info()
 
 # Helpful layout factors

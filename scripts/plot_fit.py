@@ -30,6 +30,7 @@ log_prob = f["log_prob"]
 # Use the fiducial for comparisons
 lcdm = BackgroundCosmology()
 lcdm.solve(rtol=1e-13)
+lcdm.info()
 
 h0 = chain[:, 0]
 omega_M = chain[:, 1]
@@ -42,7 +43,7 @@ omega_lam = 1 - omega_M - omega_K - omega_R
 combined_res = MCMCResult(
     chain=[omega_M * h0**2, omega_lam * h0**2],
     log_prob=log_prob,
-    labels=[r"$\Omega_{M,0}h_0^2$", r"$\Omega_{\Lambda,0}h_0^2$"],
+    labels=[r"$\Omega_{m,0}h_0^2$", r"$\Omega_{\Lambda,0}h_0^2$"],
     fiducial=[lcdm.OmegaM0 * lcdm.h0**2, lcdm.OmegaLambda0 * lcdm.h0**2],
 )
 
@@ -59,7 +60,7 @@ combined_res.report()
 m_lam_res = MCMCResult(
     chain=[omega_M, omega_lam],
     log_prob=log_prob,
-    labels=[r"$\Omega_{M,0}$", r"$\Omega_{\Lambda,0}$"],
+    labels=[r"$\Omega_{m,0}$", r"$\Omega_{\Lambda,0}$"],
     fiducial=[lcdm.OmegaM0, lcdm.OmegaLambda0],
 )
 
@@ -89,7 +90,7 @@ indiv_res.report()
 indiv_res = MCMCResult(
     chain.T,
     log_prob,
-    labels=["$h_0$", r"$\Omega_{M,0}$", r"$\Omega_{K,0}$"],
+    labels=["$h_0$", r"$\Omega_{m,0}$", r"$\Omega_{k,0}$"],
     fiducial=[lcdm.h0, lcdm.OmegaM0, lcdm.OmegaK0],
 )
 
@@ -158,13 +159,31 @@ for cos in [lcdm, cos_best]:
     print(
         f"x: {cos.x_rm:.5f}  z: {z_of_x(cos.x_rm):.5f}  t: {cos.t(cos.x_rm)[0] / gyr:.5e} Gyr"
     )
+    print(r"$x_{\rm rm}$ & " + f"{cos.x_rm:.3f} \\\\")
+    print(r"$z_{\rm rm}$ & " + f"{z_of_x(cos.x_rm):.0f} \\\\")
+    print(r"$t_{\rm rm}$ & " + f"{cos.t(cos.x_rm)[0] / gyr:.3e} (Gyr.) \\\\")
+    print()
     print("Matter-Lambda eq.:")
     print(
         f"x: {cos.x_mlam:.5f}  z: {z_of_x(cos.x_mlam):.5f}  t: {cos.t(cos.x_mlam)[0] / gyr:.5e} Gyr"
     )
+    print(r"$x_{\rm m\Lambda}$ & " + f"{cos.x_mlam:.4f} \\\\")
+    print(r"$z_{\rm m\Lambda}$ & " + f"{z_of_x(cos.x_mlam):.4f} \\\\")
+    print(r"$t_{\rm m\Lambda}$ & " + f"{cos.t(cos.x_mlam)[0] / gyr:.3f} (Gyr.) \\\\")
+    print()
+    print("Acceleration:")
+    print(r"$x_{\rm accel.}$ & " + f"{cos.x_accel:.4f} \\\\")
+    print(r"$z_{\rm accel.}$ & " + f"{z_of_x(cos.x_accel):.4f} \\\\")
+    print(r"$t_{\rm accel.}$ & " + f"{cos.t(cos.x_accel)[0] / gyr:.3f} (Gyr.) \\\\")
+    print()
     print(f"Age of current universe t(0) (Gyr): {cos.t(0) / gyr}")
+    print(f"Age $t(x=0)$  & {cos.t(0)[0] / gyr:.2f} (Gyr.)\\\\")
     print(
         f"Conformal time  of current universe eta(0)/c (Gyr): {cos.eta(0) / const.c / gyr}"
+    )
+    print(
+        r"Conformal time $\eta(x=0)/c$"
+        + f" & {cos.eta(0)[0] / const.c / gyr:.2f} (Gyr.)\\\\"
     )
     print()
 
