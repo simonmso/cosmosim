@@ -2,6 +2,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from scipy import integrate
 from scipy import interpolate
+from scipy import optimize
 from os import path
 import warnings
 
@@ -28,16 +29,6 @@ class RecombinationHistory:
     Attributes:
       tau_reion            (float): The optical depth at reionization
       z_star               (float): The redshift for the LSS (defined as peak of visibility function or tau=1)
-
-    Functions:
-      tau_of_x             (float->float) : Optical depth as function of x=log(a)
-      dtaudx_of_x          (float->float) : First x-derivative of optical depth as function of x=log(a)
-      ddtauddx_of_x        (float->float) : Second x-derivative of optical depth as function of x=log(a)
-      g_tilde_of_x         (float->float) : Visibility function dexp(-tau)dx as function of x=log(a)
-      dgdx_tilde_of_x      (float->float) : First x-derivative of visibility function as function of x=log(a)
-      ddgddx_tilde_of_x    (float->float) : Second x-derivative of visibility function as function of x=log(a)
-      Xe_of_x              (float->float) : Free electron fraction dXedx as function of x=log(a)
-      ne_of_x              (float->float) : Electron number density as function of x=log(a)
     """
 
     # Settings for solver
@@ -115,15 +106,21 @@ class RecombinationHistory:
         d3t = self.d3tau(x)
         return (-(dt**3) + 3 * dt * d2t - d3t) * np.exp(-t)
 
-    def Xe_of_x(self, x):
-        if not hasattr(self, "log_Xe_of_x_spline"):
-            raise NameError("The spline log_Xe_of_x_spline has not been created")
-        return np.exp(self.log_Xe_of_x_spline(x))
+    def Xe(self, x):
+        if not hasattr(self, "log_Xe_spline"):
+            raise NameError("The spline log_Xe_spline has not been created")
+        return np.exp(self.log_Xe_spline(x))
 
-    def ne_of_x(self, x):
-        if not hasattr(self, "log_ne_of_x_spline"):
-            raise NameError("The spline log_ne_of_x_spline has not been created")
-        return np.exp(self.log_ne_of_x_spline(x))
+    def ne(self, x):
+        if not hasattr(self, "log_ne_spline"):
+            raise NameError("The spline log_ne_spline has not been created")
+        return np.exp(self.log_ne_spline(x))
+
+    def s(self, x):
+        """Sound horizon"""
+        if not hasattr(self, "s_spline"):
+            raise NameError("The spline s_spline has not been created")
+        return self.s_spline(x)
 
     # =========================================================================
     # =========================================================================
@@ -150,8 +147,9 @@ class RecombinationHistory:
 
         self.solve_for_optical_depth_tau()
 
-        # Compute z_star (peak of visibility function or tau = 1)
-        # XXX TODO XXX
+        self.solve_z_star()
+
+        self.solve_sound_horizon()
 
         # PhD: compute optical depth at reionization
         # XXX TODO XXX
@@ -162,8 +160,8 @@ class RecombinationHistory:
         """
         npts = 10000
         xarr = np.linspace(self.x_start, self.x_end, num=npts)
-        Xe = self.Xe_of_x(xarr)
-        ne = self.ne_of_x(xarr)
+        Xe = self.Xe(xarr)
+        ne = self.ne(xarr)
         tau = self.tau(xarr)
         dtaudx = -self.dtau(xarr)
         ddtaudx = self.d2tau(xarr)
@@ -196,11 +194,10 @@ class RecombinationHistory:
         ax.set_title("ddgddx_tilde")
         ax.plot(xarr, ddgddx_tilde)
 
-        # ax.legend()
-
         fig.savefig(path.join(url, "g_tilde"))
         plt.close(fig)
 
+        # Tau
         fig, ax = plt.subplots(figsize=(apsw, 0.7 * apsw))
         ax.set_title("Tau and derivatives")
         ax.plot(xarr, tau, label="tau")
@@ -230,7 +227,16 @@ class RecombinationHistory:
         fig.savefig(path.join(url, "Xe_and_ne"))
         plt.close(fig)
 
-        # # tau
+        # Sound horizon
+        fig, ax = plt.subplots(figsize=(apsw, 0.7 * apsw))
+
+        ax.set_title("Sound horizon")
+        ax.plot(xarr, self.s(xarr), label=r"$s(x)$")
+        ax.axvline(np.log(1 / (1 + self.z_star)), label=r"$z_{*}$")
+
+        ax.set_yscale("log")
+        fig.savefig(path.join(url, "sound_horizon"))
+        plt.close(fig)
 
     # =========================================================================
     # =========================================================================
@@ -263,8 +269,8 @@ class RecombinationHistory:
 
         ne = self._n_H(x) * Xe
 
-        self.log_Xe_of_x_spline = interpolate.make_interp_spline(x, np.log(Xe))
-        self.log_ne_of_x_spline = interpolate.make_interp_spline(x, np.log(ne))
+        self.log_Xe_spline = interpolate.make_interp_spline(x, np.log(Xe))
+        self.log_ne_spline = interpolate.make_interp_spline(x, np.log(ne))
 
     def _n_H(self, x):
         return self.cosmo.OmegaB0 * self.cosmo.rhoc0 / (const.m_H * np.exp(3 * x))
@@ -355,7 +361,7 @@ class RecombinationHistory:
         """
         Right hand side of the optical depth ODE -dtaudx = RHS
         """
-        return -(const.c * self.ne_of_x(x) * const.sigma_T) / (self.cosmo.H(x))
+        return -(const.c * self.ne(x) * const.sigma_T) / (self.cosmo.H(x))
 
     def solve_for_optical_depth_tau(self):
         """
@@ -388,3 +394,42 @@ class RecombinationHistory:
         self.dtau_spline = self.tau_spline.derivative()
         self.d2tau_spline = self.tau_spline.derivative(2)
         self.d3tau_spline = self.tau_spline.derivative(3)
+
+    def solve_z_star(self):
+        """
+        Find the redshift for tau = 1 (peak of the visibility function)
+        """
+        # Compute z_star (peak of visibility function or tau = 1)
+        sol = optimize.root_scalar(
+            lambda x: self.tau(x) - 1,
+            method="brentq",
+            bracket=[-12, -4],
+            fprime=self.dtau,
+            fprime2=self.d2tau,
+            x0=-7,
+            rtol=1e-8,
+        )
+        assert sol.converged, f"Failed to find z_star, {sol.flag}"
+        self.z_star = (1 / np.exp(sol.root)) - 1
+
+    def _dsdx(self, x, _, R0):
+        R = R0 / np.exp(x)
+        return (const.c * np.sqrt(R / (3 * (1 + R)))) / self.cosmo.H(x)
+
+    def solve_sound_horizon(self):
+        x = np.linspace(self.x_start, self.x_end, num=self.npts)
+
+        R0 = (4 * self.cosmo.OmegaR0) / (3 * self.cosmo.OmegaB0)
+        s_ini = self._dsdx(x[0], 0, R0)
+
+        res = integrate.solve_ivp(
+            self._dsdx,
+            (self.x_start, self.x_end),
+            y0=(s_ini,),
+            args=(R0,),
+            t_eval=x,
+            dense_output=True,
+        )
+        assert res.success, f"Failed to find sound horizon, {res.message}"
+
+        self.s_spline = lambda x: res.sol(x).flatten()
