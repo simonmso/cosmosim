@@ -113,12 +113,12 @@ class BackgroundCosmology:
     def eta(self, x):
         if not hasattr(self, "eta_ode_sol"):
             raise NameError("The spline eta_ode_sol has not been created")
-        return self.eta_ode_sol(x).flatten()
+        return self.eta_ode_sol(x)
 
     def t(self, x):
         if not hasattr(self, "t"):
             raise NameError("The spline t_ode_sol has not been created")
-        return self.t_ode_sol(x).flatten()
+        return self.t_ode_sol(x)
 
     def H(self, x):
         a = np.exp(x)
@@ -254,27 +254,34 @@ class BackgroundCosmology:
         For LCDM we only need to solve for the conformal time eta(x)
         """
         # Compute and spline conformal time eta = Int_0^t dt/a = Int da/(a^2 H(a)) =  Int dx/[ exp(x) * H(exp(x)) ] where x = log a
-        eta_out = integrate.solve_ivp(
+        eta_result = integrate.solve_ivp(
             self.detadx,
             t_span=(self.x_start, self.x_end),
             y0=(const.c / self.Hp(self.x_start),),
             t_eval=self.x_pts,  # explicitly compute eta at these x values
-            dense_output=True,  # create spline
+            dense_output=False,  # don't create spline
             rtol=rtol,
+        )
+        assert eta_result.success
+
+        self.eta_ode_sol = interpolate.make_interp_spline(
+            self.x_pts, eta_result.y.flatten()
         )
 
         # same for t
-        t_out = integrate.solve_ivp(
+        t_result = integrate.solve_ivp(
             self.dtdx,
             t_span=(self.x_start, self.x_end),
             y0=(1 / (2 * self.H(self.x_start)),),
-            t_eval=self.x_pts,  # explicitly compute eta at these x values
-            dense_output=True,  # create spline
+            t_eval=self.x_pts,  # explicitly compute t at these x values
+            dense_output=False,
             rtol=rtol,
         )
+        assert t_result.success
 
-        self.eta_ode_sol = eta_out.sol
-        self.t_ode_sol = t_out.sol
+        self.t_ode_sol = interpolate.make_interp_spline(
+            self.x_pts, t_result.y.flatten()
+        )
 
     def plot(self, url):
         """

@@ -1,11 +1,17 @@
+import numpy as np
+from os import path
+
 # import RecombinationHistory
-# import Perturbations
+import Perturbations
+
 # import PowerSpectrum
 import argparse
 import matplotlib.pyplot as plt
 
 from BackgroundCosmology import BackgroundCosmology
 from RecombinationHistory import RecombinationHistory
+from Global import APS_COL_W as apsw
+from Global import const
 
 """
 
@@ -64,30 +70,32 @@ rec = RecombinationHistory(
 # # Solve and plot
 rec.info()
 rec.solve()
+# if make_plots:
+#     rec.plot(args.output)
+
+
+# Milestone 3: Integrate the perturbations
+# ============================================
+pert = Perturbations.Perturbations(
+    BackgroundCosmology=cosmo,
+    RecombinationHistory=rec,
+    n_ell_theta=10,  # Number of ells (0,1,...,n-1) to include in the Boltzmann hierarchy
+    keta_max=500.0,  # Set kmax based on keta0. 3000 typically enough for Cell, lower for testing
+    npts_k=30,
+)  # 100-200 typically enough for Cell, lower for testing
+
+
+# Solve and plot
+pert.info()
+pert.solve()
 if make_plots:
-    rec.plot(args.output)
-
-# # Remove when done with milestone
-exit()
-
-
-# # Milestone 3: Integrate the perturbations
-# # ============================================
-# pert = Perturbations.Perturbations(
-#     BackgroundCosmology=cosmo,
-#     RecombinationHistory=rec,
-#     n_ell_theta=10,  # Number of ells (0,1,...,n-1) to include in the Boltzmann hierarchy
-#     keta_max=1500.0,  # Set kmax based on keta0. 3000 typically enough for Cell, lower for testing
-#     npts_k=100,
-# )  # 100-200 typically enough for Cell, lower for testing
-
-# # Solve and plot
-# pert.info()
-# pert.solve()
+    pert.plot(pert.k_min, args.output)
 # if show_plots:
 #     pert.plot(pert.k_min)
 # if show_plots:
 #     pert.plot(pert.k_max)
+
+exit()
 
 # # Remove when done with milestone
 # exit()

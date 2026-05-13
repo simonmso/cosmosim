@@ -414,7 +414,7 @@ class RecombinationHistory:
 
     def _dsdx(self, x, _, R0):
         R = R0 / np.exp(x)
-        return (const.c * np.sqrt(R / (3 * (1 + R)))) / self.cosmo.H(x)
+        return (const.c * np.sqrt(R / (3 * (1 + R)))) / self.cosmo.Hp(x)
 
     def solve_sound_horizon(self):
         x = np.linspace(self.x_start, self.x_end, num=self.npts)
