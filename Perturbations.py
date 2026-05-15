@@ -1,5 +1,6 @@
 from os import path
 import numpy as np
+import cython
 from scipy import integrate
 from scipy import interpolate
 from scipy import optimize
@@ -7,21 +8,25 @@ from matplotlib import pyplot as plt
 
 from Global import const
 from Global import APS_COL_W as apsw
-import BackgroundCosmology
-import RecombinationHistory
+from cython.cimports.BackgroundCosmology import BackgroundCosmology
+from cython.cimports.RecombinationHistory import RecombinationHistory
+from cython.cimports.libc.math import exp
 
 # A system to have control over where each
 # quantity is in the ODE arrays (optional to use)
-i = {
-    "deltaCDM": 0,
-    "vCDM": 1,
-    "deltaB": 2,
-    "vB": 3,
-    "Phi": 4,
-    "theta": 5,
-}
 
 
+i_deltaCDM = cython.declare(cython.Py_ssize_t, 0)
+i_vCDM = cython.declare(cython.Py_ssize_t, 1)
+i_deltaB = cython.declare(cython.Py_ssize_t, 2)
+i_vB = cython.declare(cython.Py_ssize_t, 3)
+i_Phi = cython.declare(cython.Py_ssize_t, 4)
+i_theta = cython.declare(cython.Py_ssize_t, 5)
+
+c = cython.declare(cython.double, const.c)
+
+
+@cython.cclass
 class Perturbations:
     """
     This is a class for solving the perturbation history of the Universe
@@ -46,13 +51,29 @@ class Perturbations:
     """
 
     # Settings x-integration
-    x_start = np.log(1e-8)
-    x_end = np.log(1.0)
+    x_start = -12
+    x_end = 0
     npts_x = 1000
     npts_tight = int(0.1 * npts_x)
 
     # Tight coupling hard max (start of recomb.)
     _tight_hard_stop = -8.3
+
+    cosmo: BackgroundCosmology
+    rec: RecombinationHistory
+    k_min: cython.double
+    k_max: cython.double
+    npts_k: cython.Py_ssize_t
+    n_ell_theta: cython.Py_ssize_t
+    n_tot_tight: cython.Py_ssize_t
+    n_tot_full: cython.Py_ssize_t
+
+    R0: cython.double
+    H0: cython.double
+
+    results: object
+    splines: object
+    psi_spline: object
 
     def __init__(
         self,
@@ -79,7 +100,10 @@ class Perturbations:
         self.R0 = (4 * self.cosmo.OmegaR0) / (3 * self.cosmo.OmegaB0)
 
         # Compute x where tau' > 10
-        self._set_tight_limit_tau_only()
+        # self._set_tight_limit_tau_only()
+
+        # Unpack some values for speed
+        self.H0 = self.cosmo.H0
 
         # PhD: you need to add polarization and neutrinos here and in the ODEs below
         # (and don't forget the differences between the tight coupling and full ODE)
@@ -99,23 +123,23 @@ class Perturbations:
 
     def deltaCDM(self, kx):
         self.check_for_splines()
-        return self.splines[i["deltaCDM"]](kx)
+        return self.splines[i_deltaCDM](kx)
 
     def deltaB(self, kx):
         self.check_for_splines()
-        return self.splines[i["deltaB"]](kx)
+        return self.splines[i_deltaB](kx)
 
     def vCDM(self, kx):
         self.check_for_splines()
-        return self.splines[i["vCDM"]](kx)
+        return self.splines[i_vCDM](kx)
 
     def vB(self, kx):
         self.check_for_splines()
-        return self.splines[i["vB"]](kx)
+        return self.splines[i_vB](kx)
 
     def Phi(self, kx):
         self.check_for_splines()
-        return self.splines[i["Phi"]](kx)
+        return self.splines[i_Phi](kx)
 
     def Psi(self, kx):
         self.check_for_splines()
@@ -123,7 +147,7 @@ class Perturbations:
 
     def Theta(self, kx, ell):
         self.check_for_splines()
-        return self.splines[i["theta"] + ell](kx)
+        return self.splines[i_theta + ell](kx)
 
     # =========================================================================
     # =========================================================================
@@ -244,6 +268,8 @@ class Perturbations:
             # Compute IC for tight coupling
             y_tc_ic = self.get_ic(self.x_start, k)
 
+            # return y_tc_ic, k
+
             # Solve the tight coupling ODE
             sol_tight = integrate.solve_ivp(
                 self.rhs_tight_coupling,
@@ -264,6 +290,8 @@ class Perturbations:
             self.set_analytic_tight_values(results, x_tight, k, idx)
 
             y_full_ic = results[:, idx, self.npts_tight - 1]
+
+            # return y_full_ic, k
 
             # Solve the full ODE
             sol_full = integrate.solve_ivp(
@@ -327,117 +355,119 @@ class Perturbations:
 
         # Compute IC
         Psi = -1.0 / (1.5 + 2.0 * f_nu / 5.0)
-        y[i["deltaCDM"]] = -(3 / 2) * Psi
-        y[i["vCDM"]] = -0.5 * ckHp * Psi
-        y[i["deltaB"]] = y[i["deltaCDM"]]
-        y[i["vB"]] = y[i["vCDM"]]
-        y[i["Phi"]] = -(1 + 2 * f_nu / 5) * Psi
-        y[i["theta"] + 0] = -0.5 * Psi
-        y[i["theta"] + 1] = 0.5 * ckHp * Psi
+        y[i_deltaCDM] = -(3 / 2) * Psi
+        y[i_vCDM] = -0.5 * ckHp * Psi
+        y[i_deltaB] = y[i_deltaCDM]
+        y[i_vB] = y[i_vCDM]
+        y[i_Phi] = -(1 + 2 * f_nu / 5) * Psi
+        y[i_theta + 0] = -0.5 * Psi
+        y[i_theta + 1] = 0.5 * ckHp * Psi
 
         return y
 
-    def rhs_full(self, x, y, k):
+    def rhs_full(self, x: cython.double, y: cython.double[:], k: cython.double):
         """
         Set the right hand side of the full ODE system dy/dx = RHS
         for a given value of x. The wavenumber k is set in the global variable k_current
         """
         # The array we are to fill and return
-        dydx = np.zeros(self.n_tot_full)
+        dydx = np.zeros(self.n_tot_full, dtype=np.double)
+        dydx_view: cython.double[:] = dydx
 
-        O2 = y[i["theta"] + 2]  # w/o polarization
+        O2: cython.double = y[i_theta + 2]  # w/o polarization
 
         # --------- Same as tight regime -------
-        H0 = self.cosmo.H0
-        Hp = self.cosmo.Hp(x)
-        ckHp = (const.c * k) / Hp
-        a = np.exp(x)
-        R = self.R0 / a
-        dt = self.rec.dtau(x)
-        O0 = y[i["theta"]]
-        O1 = y[i["theta"] + 1]
-        vB = y[i["vB"]]
-        Phi = y[i["Phi"]]
+        H0: cython.double = self.H0
+        Hp: cython.double = self.cosmo.Hp_fast(x)
+        ckHp = (c * k) / Hp
+        a: cython.double = exp(x)
+        R: cython.double = self.R0 / a
+        dt: cython.double = self.rec.dtau_fast(x)
+        O0 = y[i_theta + 0]
+        O1 = y[i_theta + 1]
+        vB = y[i_vB]
+        Phi = y[i_Phi]
 
-        Psi = -Phi - 12 * (H0 / (const.c * k * a)) ** 2 * (
+        Psi: cython.double = -Phi - 12 * (H0 / (c * k * a)) ** 2 * (
             self.cosmo.OmegaR0 * O2
         )  # N_2 = 0; i.e. no neutrinos
-        dPhi = (
+        dPhi: cython.double = (
             Psi
-            - (1 / 3) * ckHp**2 * Phi
+            - (1 / 3) * ckHp * ckHp * Phi
             + 0.5
             * (H0 / Hp) ** 2
             * (
-                self.cosmo.OmegaCDM0 * y[i["deltaCDM"]] / a
-                + self.cosmo.OmegaB0 * y[i["deltaB"]] / a
-                + 4 * self.cosmo.OmegaR0 / a**2 * O0
+                self.cosmo.OmegaCDM0 * y[i_deltaCDM] / a
+                + self.cosmo.OmegaB0 * y[i_deltaB] / a
+                + 4 * self.cosmo.OmegaR0 / (a * a) * O0
             )
         )
-        dO0 = -ckHp * O1 - dPhi
+        dO0: cython.double = -ckHp * O1 - dPhi
 
-        dydx[i["deltaCDM"]] = ckHp * y[i["vCDM"]] - 3 * dPhi
-        dydx[i["vCDM"]] = -y[i["vCDM"]] - ckHp * Psi
-        dydx[i["deltaB"]] = ckHp * vB - 3 * dPhi
-        dydx[i["theta"] + 0] = dO0
-        dydx[i["Phi"]] = dPhi
+        dydx_view[i_deltaCDM] = ckHp * y[i_vCDM] - 3 * dPhi
+        dydx_view[i_vCDM] = -y[i_vCDM] - ckHp * Psi
+        dydx_view[i_deltaB] = ckHp * vB - 3 * dPhi
+        dydx_view[i_theta + 0] = dO0
+        dydx_view[i_Phi] = dPhi
         # ------------------------------------
 
-        dydx[i["theta"] + 1] = ckHp / 3 * (O0 - 2 * O2 + Psi) + dt * (O1 + vB / 3)
-        dydx[i["vB"]] = -vB - ckHp * Psi + dt * R * (3 * O1 + vB)
+        dydx_view[i_theta + 1] = ckHp / 3 * (O0 - 2 * O2 + Psi) + dt * (O1 + vB / 3)
+        dydx_view[i_vB] = -vB - ckHp * Psi + dt * R * (3 * O1 + vB)
 
         # Thetas 2 < ell < lmax
+        l: cython.Py_ssize_t
         for l in range(2, self.n_ell_theta - 1):
-            idx = i["theta"] + l
+            idx: cython.Py_ssize_t = i_theta + l
             Pi = O2 if l == 2 else 0
-            dydx[i["theta"] + l] = ckHp / (2 * l + 1) * (
+            dydx_view[i_theta + l] = ckHp / (2 * l + 1) * (
                 l * y[idx - 1] - (l + 1) * y[idx + 1]
             ) + dt * (y[idx] - Pi)
 
         # Theta lmax
-        Olmax = y[i["theta"] + self.n_ell_theta - 1]
-        dydx[i["theta"] + self.n_ell_theta - 1] = (
-            ckHp
-            * (
-                y[i["theta"] + self.n_ell_theta - 2]
-                - (l + 1) / (k * self.cosmo.eta(x)) * Olmax
-            )
-            + dt * Olmax
+        lmax_idx: cython.Py_ssize_t = i_theta + self.n_ell_theta - 1
+        Olmax = y[lmax_idx]
+        eta: cython.double = self.cosmo.eta_fast(x)
+        dydx_view[lmax_idx] = (
+            ckHp * (y[lmax_idx - 1] - (l + 1) / (k * eta) * Olmax) + dt * Olmax
         )
         return dydx
 
-    def rhs_tight_coupling(self, x, y, k):
+    def rhs_tight_coupling(
+        self, x: cython.double, y: cython.double[:], k: cython.double
+    ):
         """
         Set the right hand side of the tight coupling ODE system dy/dx = RHS
         for a given value of x. The wavenumber k is set in the global variable k_current
         """
         # The array we are to fill and return
-        dydx = np.zeros(self.n_tot_tight)
+        dydx = np.zeros(self.n_tot_tight, dtype=np.double)
+        dydx_view: cython.double[:] = dydx
 
         H0 = self.cosmo.H0
-        Hp = self.cosmo.Hp(x)
-        dHp = self.cosmo.dHpdx(x)
-        ckHp = (const.c * k) / Hp
-        a = np.exp(x)
+        Hp: cython.double = self.cosmo.Hp_fast(x)
+        dHp: cython.double = self.cosmo.dHpdx_fast(x)
+        ckHp = (c * k) / Hp
+        a = exp(x)
         R = self.R0 / a
-        dt = self.rec.dtau(x)
-        d2t = self.rec.d2tau(x)
-        O0 = y[i["theta"]]
-        O1 = y[i["theta"] + 1]
+        dt = self.rec.dtau_fast(x)
+        d2t = self.rec.d2tau_fast(x)
+        O0 = y[i_theta + 0]
+        O1 = y[i_theta + 1]
         O2 = -(20 / 45) * ckHp / dt * O1  # w/o polarization
-        vB = y[i["vB"]]
-        Phi = y[i["Phi"]]
+        vB = y[i_vB]
+        Phi = y[i_Phi]
 
-        Psi = -Phi - 12 * (H0 / (const.c * k * a)) ** 2 * (
+        Psi = -Phi - 12 * (H0 / (c * k * a)) ** 2 * (
             self.cosmo.OmegaR0 * O2
         )  # N_2 = 0; i.e. no neutrinos
         dPhi = (
             Psi
-            - (1 / 3) * ckHp**2 * Phi
+            - (1 / 3) * ckHp * ckHp * Phi
             + 0.5
             * (H0 / Hp) ** 2
             * (
-                self.cosmo.OmegaCDM0 * y[i["deltaCDM"]] / a
-                + self.cosmo.OmegaB0 * y[i["deltaB"]] / a
+                self.cosmo.OmegaCDM0 * y[i_deltaCDM] / a
+                + self.cosmo.OmegaB0 * y[i_deltaB] / a
                 + 4 * self.cosmo.OmegaR0 / a**2 * O0
             )
         )
@@ -455,19 +485,19 @@ class Perturbations:
         )
 
         # Set the right hand side
-        dydx[i["deltaCDM"]] = ckHp * y[i["vCDM"]] - 3 * dPhi
-        dydx[i["vCDM"]] = -y[i["vCDM"]] - ckHp * Psi
-        dydx[i["deltaB"]] = ckHp * vB - 3 * dPhi
-        dydx[i["vB"]] = dvB
-        dydx[i["Phi"]] = dPhi
-        dydx[i["theta"] + 0] = dO0
-        dydx[i["theta"] + 1] = 1 / 3 * (q - dvB)
+        dydx_view[i_deltaCDM] = ckHp * y[i_vCDM] - 3 * dPhi
+        dydx_view[i_vCDM] = -y[i_vCDM] - ckHp * Psi
+        dydx_view[i_deltaB] = ckHp * vB - 3 * dPhi
+        dydx_view[i_vB] = dvB
+        dydx_view[i_Phi] = dPhi
+        dydx_view[i_theta + 0] = dO0
+        dydx_view[i_theta + 1] = 1 / 3 * (q - dvB)
 
         return dydx
 
     def get_Psi(self, x, y, k):
-        return -y[i["Phi"]] - 12 * (self.cosmo.H0 / (const.c * k * np.exp(x))) ** 2 * (
-            self.cosmo.OmegaR0 * y[i["theta"] + 2]
+        return -y[i_Phi] - 12 * (self.cosmo.H0 / (const.c * k * np.exp(x))) ** 2 * (
+            self.cosmo.OmegaR0 * y[i_theta + 2]
         )  # N_2 = 0; i.e. no neutrinos
 
     def _set_tight_limit_tau_only(self):
@@ -483,8 +513,8 @@ class Perturbations:
 
     def set_analytic_tight_values(self, y, x, k, k_idx):
         for l in range(2, self.n_ell_theta):
-            prev = y[i["theta"] + l - 1, k_idx, : self.npts_tight]
-            y[i["theta"] + l, k_idx, : self.npts_tight] = (
+            prev = y[i_theta + l - 1, k_idx, : self.npts_tight]
+            y[i_theta + l, k_idx, : self.npts_tight] = (
                 -l
                 / (2 * l + 1)
                 * const.c

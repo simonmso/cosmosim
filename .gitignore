@@ -2,8 +2,18 @@ __pycache__
 .venv
 results/
 .vscode
+.DS_Store
 
 # LaTeX products
 paper.*
 !paper.tex
 paperNotes.bib
+
+# Compiled Cython
+*.c
+*.html
+*.so
+*.o
+
+# Profiles from cProfile
+*.prof

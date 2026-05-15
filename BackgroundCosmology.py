@@ -1,13 +1,19 @@
+import cython
+from cython.cimports.FastSpline import FastSpline
+
 from os import path
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy import interpolate
 import scipy.integrate as integrate
+import math
 
 from Global import const
 from Global import APS_COL_W as apsw
+from cython.cimports.libc.math import exp, sqrt
 
 
+@cython.cclass
 class BackgroundCosmology:
     """
     This is a class for the cosmology at the background level.
@@ -39,6 +45,9 @@ class BackgroundCosmology:
       dHpdx           (float->float) : First derivative of conformal hubble parameter as function of x=log(a)
     """
 
+    # _eta_spline_x: cython.double[::1]
+    # _eta_spline_c: cython.double[:, ::1]
+
     def __init__(
         self,
         h0=0.6688,
@@ -65,7 +74,7 @@ class BackgroundCosmology:
 
         if OmegaR0 is not None:
             self.OmegaR0 = OmegaR0
-            self.TCMB0 = None
+            self.TCMB0 = math.nan
         else:
             self.TCMB0 = TCMB_in_K * const.K
             self.OmegaR0 = (
@@ -77,8 +86,8 @@ class BackgroundCosmology:
 
         if OmegaM0 is not None:
             self.OmegaM0 = OmegaM0  # Total matter
-            self.OmegaB0 = None
-            self.OmegaCDM0 = None
+            self.OmegaB0 = math.nan
+            self.OmegaCDM0 = math.nan
         else:
             self.OmegaM0 = OmegaB0 + OmegaCDM0  # Total matter
             self.OmegaB0 = OmegaB0
@@ -111,12 +120,15 @@ class BackgroundCosmology:
     # =========================================================================
 
     def eta(self, x):
-        if not hasattr(self, "eta_ode_sol"):
-            raise NameError("The spline eta_ode_sol has not been created")
-        return self.eta_ode_sol(x)
+        return self.eta_sol(x)
+
+    @cython.cfunc
+    def eta_fast(self, x: cython.double) -> cython.double:
+        return self.eta_fast_sol.evaluate(x)
+        # return fast_spline.evaluate(x, self._eta_spline_x, self._eta_spline_c)
 
     def t(self, x):
-        if not hasattr(self, "t"):
+        if not hasattr(self, "t_ode_sol"):
             raise NameError("The spline t_ode_sol has not been created")
         return self.t_ode_sol(x)
 
@@ -129,9 +141,26 @@ class BackgroundCosmology:
 
         return self.H0 * np.sqrt(M + R + K + L)
 
+    @cython.cfunc
+    def H_fast(self, x: cython.double) -> cython.double:
+        a = exp(x)
+        a2 = a * a
+        a3 = a2 * a
+        a4 = a3 * a
+        M = self.OmegaM0 / a3
+        R = self.OmegaM0 / a4
+        K = self.OmegaM0 / a2
+        L = self.OmegaLambda0
+        return self.H0 * sqrt(M + R + K + L)
+
     def Hp(self, x):
         a = np.exp(x)
         return a * self.H(x)
+
+    @cython.cfunc
+    def Hp_fast(self, x: cython.double) -> cython.double:
+        a = exp(x)
+        return a * self.H_fast(x)
 
     def dHdx(self, x):
         a = np.exp(x)
@@ -144,9 +173,27 @@ class BackgroundCosmology:
             -3.0 * M - 4.0 * R - 2.0 * K
         )
 
+    @cython.cfunc
+    def dHdx_fast(self, x: cython.double) -> cython.double:
+        a = exp(x)
+        a2 = a * a
+        a3 = a2 * a
+        a4 = a3 * a
+        M = self.OmegaM0 / a3
+        R = self.OmegaM0 / a4
+        K = self.OmegaM0 / a2
+        L = self.OmegaLambda0
+
+        return (self.H0 / (2.0 * sqrt(M + R + K + L))) * (-3.0 * M - 4.0 * R - 2.0 * K)
+
     def dHpdx(self, x):
         a = np.exp(x)
         return a * (self.H(x) + self.dHdx(x))
+
+    @cython.cfunc
+    def dHpdx_fast(self, x: cython.double) -> cython.double:
+        a = exp(x)
+        return a * (self.H_fast(x) + self.dHdx_fast(x))
 
     def d2Hdx2(self, x):
         a = np.exp(x)
@@ -264,9 +311,13 @@ class BackgroundCosmology:
         )
         assert eta_result.success
 
-        self.eta_ode_sol = interpolate.make_interp_spline(
-            self.x_pts, eta_result.y.flatten()
+        eta_spline = interpolate.CubicSpline(
+            self.x_pts, eta_result.y.flatten(), bc_type="natural"
         )
+        self.eta_sol = eta_spline
+        self.eta_fast_sol = FastSpline(eta_spline)
+        # self._eta_spline_c = eta_spline.c
+        # self._eta_spline_x = eta_spline.x
 
         # same for t
         t_result = integrate.solve_ivp(
@@ -279,8 +330,8 @@ class BackgroundCosmology:
         )
         assert t_result.success
 
-        self.t_ode_sol = interpolate.make_interp_spline(
-            self.x_pts, t_result.y.flatten()
+        self.t_ode_sol = interpolate.CubicSpline(
+            self.x_pts, t_result.y.flatten(), bc_type="natural"
         )
 
     def plot(self, url):

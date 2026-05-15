@@ -1,3 +1,6 @@
+import cython
+from cython.cimports.FastSpline import FastSpline
+from cython.cimports.BackgroundCosmology import BackgroundCosmology
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy import integrate
@@ -8,9 +11,9 @@ import warnings
 
 from Global import const
 from Global import APS_COL_W as apsw
-import BackgroundCosmology
 
 
+@cython.cclass
 class RecombinationHistory:
     """
     This is a class for solving the recombination (and reionization) history of the Universe.
@@ -31,15 +34,6 @@ class RecombinationHistory:
       z_star               (float): The redshift for the LSS (defined as peak of visibility function or tau=1)
     """
 
-    # Settings for solver
-    x_start = -12
-    x_end = 0
-    npts = 500
-    npts_tau_before_reion = 1000
-    npts_tau_during_reion = 1000
-    npts_tau_after_reion = 1000
-    Xe_saha_limit = 0.99
-
     def __init__(
         self,
         BackgroundCosmology,
@@ -51,6 +45,16 @@ class RecombinationHistory:
         z_helium_reion=3.5,
         delta_z_helium_reion=0.5,
     ):
+
+        # Settings for solver
+        self.x_start = -12
+        self.x_end = 0
+        self.npts = 500
+        self.npts_tau_before_reion = 1000
+        self.npts_tau_during_reion = 1000
+        self.npts_tau_after_reion = 1000
+        self.Xe_saha_limit = 0.99
+
         self.cosmo = BackgroundCosmology
 
         self.Yp = Yp
@@ -68,38 +72,32 @@ class RecombinationHistory:
     # =========================================================================
 
     def tau(self, x):
-        if not hasattr(self, "tau_spline"):
-            raise NameError("The spline tau_spline has not been created")
         return self.tau_spline(x)
 
     def dtau(self, x):
-        if not hasattr(self, "tau_spline"):
-            raise NameError("The spline tau_spline has not been created")
         return self.dtau_spline(x)
 
+    @cython.cfunc
+    def dtau_fast(self, x: cython.double) -> cython.double:
+        return self.dtau_spline_fast.evaluate(x)
+
     def d2tau(self, x):
-        if not hasattr(self, "tau_spline"):
-            raise NameError("The spline tau_spline has not been created")
         return self.d2tau_spline(x)
 
+    @cython.cfunc
+    def d2tau_fast(self, x: cython.double) -> cython.double:
+        return self.d2tau_spline_fast.evaluate(x)
+
     def d3tau(self, x):
-        if not hasattr(self, "tau_spline"):
-            raise NameError("The spline tau_spline has not been created")
         return self.d3tau_spline(x)
 
     def g_tilde(self, x):
-        if not hasattr(self, "tau_spline"):
-            raise NameError("The spline tau_spline has not been created")
         return -self.dtau(x) * np.exp(-self.tau(x))
 
     def dg_tilde(self, x):
-        if not hasattr(self, "tau_spline"):
-            raise NameError("The spline tau_spline has not been created")
         return (self.dtau(x) ** 2 - self.d2tau(x)) * np.exp(-self.tau(x))
 
     def d2g_tilde(self, x):
-        if not hasattr(self, "tau_spline"):
-            raise NameError("The spline tau_spline has not been created")
         t = self.tau(x)
         dt = self.dtau(x)
         d2t = self.d2tau(x)
@@ -107,19 +105,13 @@ class RecombinationHistory:
         return (-(dt**3) + 3 * dt * d2t - d3t) * np.exp(-t)
 
     def Xe(self, x):
-        if not hasattr(self, "log_Xe_spline"):
-            raise NameError("The spline log_Xe_spline has not been created")
         return np.exp(self.log_Xe_spline(x))
 
     def ne(self, x):
-        if not hasattr(self, "log_ne_spline"):
-            raise NameError("The spline log_ne_spline has not been created")
         return np.exp(self.log_ne_spline(x))
 
     def s(self, x):
         """Sound horizon"""
-        if not hasattr(self, "s_spline"):
-            raise NameError("The spline s_spline has not been created")
         return self.s_spline(x)
 
     # =========================================================================
@@ -164,6 +156,7 @@ class RecombinationHistory:
         ne = self.ne(xarr)
         tau = self.tau(xarr)
         dtaudx = -self.dtau(xarr)
+        dtau_fast = -np.array(list(map(self.dtau_fast, xarr)))
         ddtaudx = self.d2tau(xarr)
 
         g_tilde = self.g_tilde(xarr)
@@ -202,6 +195,8 @@ class RecombinationHistory:
         ax.set_title("Tau and derivatives")
         ax.plot(xarr, tau, label="tau")
         ax.plot(xarr, dtaudx, label="dtaudx")
+        ax.plot(xarr, dtaudx, label="dtaudx")
+        ax.plot(xarr, dtau_fast, label="dtau_fast")
         ax.plot(xarr, ddtaudx, label="ddtaudx")
         ax.set_yscale("log")
 
@@ -342,7 +337,7 @@ class RecombinationHistory:
 
     # -----------------------------------------------
 
-    def X_e_peebles(self, x, X_e_0=Xe_saha_limit):
+    def X_e_peebles(self, x, X_e_0):
         sol = integrate.solve_ivp(
             self._peebles_dXedx,
             (x[0], x[-1]),
@@ -389,11 +384,14 @@ class RecombinationHistory:
 
         tau = sol.y.flatten()
 
-        self.tau_spline = interpolate.make_interp_spline(x[::-1], tau[::-1])
+        self.tau_spline = interpolate.CubicSpline(x[::-1], tau[::-1])
 
         self.dtau_spline = self.tau_spline.derivative()
         self.d2tau_spline = self.tau_spline.derivative(2)
         self.d3tau_spline = self.tau_spline.derivative(3)
+
+        self.dtau_spline_fast = FastSpline(self.dtau_spline)
+        self.d2tau_spline_fast = FastSpline(self.d2tau_spline)
 
     def solve_z_star(self):
         """
