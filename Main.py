@@ -8,6 +8,8 @@ import Perturbations
 import argparse
 import matplotlib.pyplot as plt
 
+from scipy import integrate
+
 from BackgroundCosmology import BackgroundCosmology
 from RecombinationHistory import RecombinationHistory
 from Global import APS_COL_W as apsw
@@ -41,18 +43,23 @@ plt.style.use("./style.mplstyle")
 cosmo = BackgroundCosmology(
     name="LCDM",  # Label
     h0=0.7,  # Hubble parameter
-    OmegaB0=0.046,  # Baryon density
-    OmegaCDM0=0.224,  # CDM density
+    OmegaB0=0.05,  # Baryon density
+    # OmegaB0=0.046,  # Baryon density
+    OmegaCDM0=0.45,  # CDM density
+    # OmegaCDM0=0.224,  # CDM density
     OmegaK0=0.0,  # Curvature density parameter
     TCMB_in_K=2.7255,  # Temperature of CMB today in Kelvin
     Neff=0.0,  # Effective number of neutrinos
 )
 
 # Solve and plot
-cosmo.info()
+# cosmo.info()
 cosmo.solve()
-# if make_plots:
-#     cosmo.plot(args.output)
+if make_plots:
+    cosmo.plot(args.output)
+
+x_start = -18
+
 
 # Milestone 2: Solve the recombination history
 # ============================================
@@ -65,37 +72,151 @@ rec = RecombinationHistory(
     helium_reionization=True,  # Helium double reionization
     z_helium_reion=3.5,  # Helium double reionization redshift
     delta_z_helium_reion=0.5,
+    x_start=x_start,
+    x_end=0,
 )  # Helium double reionization width
 
+
 # # Solve and plot
-rec.info()
+# rec.info()
 rec.solve()
-# if make_plots:
-#     rec.plot(args.output)
+if make_plots:
+    rec.plot(args.output)
 
-
+# pert_start = -20
+pert_start = x_start
+transition = -8.3
 # Milestone 3: Integrate the perturbations
 # ============================================
 pert = Perturbations.Perturbations(
     BackgroundCosmology=cosmo,
     RecombinationHistory=rec,
     n_ell_theta=10,  # Number of ells (0,1,...,n-1) to include in the Boltzmann hierarchy
-    keta_max=500.0,  # Set kmax based on keta0. 3000 typically enough for Cell, lower for testing
-    npts_k=30,
-)  # 100-200 typically enough for Cell, lower for testing
+    keta_max=3000.0,  # Set kmax based on keta0. 3000 typically enough for Cell, lower for testing
+    npts_k=200,  # 100-200 typically enough for Cell, lower for testing
+    x_start=pert_start,
+    x_end=0,
+    transition=transition,
+)
 
 
 # Solve and plot
-pert.info()
+# pert.info()
 pert.solve()
-if make_plots:
-    pert.plot(pert.k_min, args.output)
-# if show_plots:
-#     pert.plot(pert.k_min)
-# if show_plots:
-#     pert.plot(pert.k_max)
 
-exit()
+# --------- Perturbation debugging plots -------------
+# kval = 0.0014
+kval = 1000.0 / cosmo.eta(0)
+print("kval", kval)
+x_array = np.linspace(pert_start, 0, 5000)
+kmpc = "{:.3g}".format(kval * const.Mpc)
+
+k = np.ones_like(x_array) * kval
+
+kx = np.array((k, x_array)).T
+
+# Fetch data from splines
+data_deltaCDM = pert.deltaCDM(kx)
+data_deltaB = pert.deltaB(kx)
+data_vCDM = pert.vCDM(kx)
+data_vB = pert.vB(kx)
+data_Phi = pert.Phi(kx)
+data_Psi = pert.Psi(kx)
+data_Theta0 = pert.Theta(kx, 0)
+data_Theta1 = pert.Theta(kx, 1)
+
+fig, ax = plt.subplots(figsize=(apsw, 0.7 * apsw))
+
+ax.set_yscale("log")
+ax.set_title("Density perturbations k = " + str(kmpc) + "/ Mpc")
+ax.plot(x_array, np.abs(data_deltaB), label="deltaB")
+ax.plot(x_array, data_deltaCDM, label="deltaCDM")
+ax.axvline(transition)
+# ax.plot(x_array, np.abs(3.0 * data_Theta0), label="deltaR")
+ax.legend()
+
+fig.savefig(path.join(args.output, "density"))
+plt.close(fig)
+
+fig, ax = plt.subplots(figsize=(apsw, 0.7 * apsw))
+
+ax.set_yscale("symlog", linthresh=1e-5)
+ax.set_title("Velocity perturbations k = " + str(kmpc) + "/ Mpc")
+ax.plot(x_array, data_vB, label="vB")
+ax.plot(x_array, data_vCDM, label="vCDM")
+ax.axvline(transition)
+# ax.scatter(pert.sol_tight.t, pert.sol_tight.y[1])
+# ax.plot(x_array, -3.0 * data_Theta1, label="vR")
+ax.legend()
+
+fig.savefig(path.join(args.output, "velocity"))
+plt.close(fig)
+
+fig, ax = plt.subplots(figsize=(apsw, 0.7 * apsw))
+# ax.set_yscale("log")
+ax.set_title("Potentials k = " + str(kmpc) + "/ Mpc")
+ax.plot(x_array, data_Phi, label=r"$\Phi$")
+ax.plot(x_array, np.abs(data_Psi), label=r"$|\Psi|$")
+
+ax.axvline(transition)
+# print("data_Psi", data_Psi)
+ax.legend()
+
+fig.savefig(path.join(args.output, "potentials"))
+plt.close(fig)
+
+fig, axs = plt.subplots(nrows=4, figsize=(apsw, 2.3 * apsw), sharex=True)
+# axs[0].plot(x_array, pert.Theta(kx, 1))
+axs[0].plot(
+    x_array,
+    -(20 / 45)
+    * (const.c * k / (cosmo.Hp(x_array) * rec.dtau(x_array)))
+    * pert.Theta(kx, 1),
+)
+axs[0].scatter(pert.results_x, pert.results[7, 0, :], s=1, c="magenta")  # theta2 sol
+axs[0].set_yscale("symlog", linthresh=1e-10)
+# axs[0].set_yscale("log")
+axs[1].plot(x_array, pert.Theta(kx, 2))
+axs[1].scatter(pert.results_x, pert.results[7, 0, :], s=1, c="magenta")  # theta2 sol
+axs[1].set_yscale("symlog", linthresh=1e-10)
+axs[2].plot(x_array, cosmo.OmegaR0 * pert.Theta(kx, 2))
+axs[2].set_yscale("symlog", linthresh=1e-10)
+axs[3].plot(
+    x_array,
+    -12
+    * (cosmo.H0 / (const.c * k * np.exp(x_array))) ** 2
+    * (cosmo.OmegaR0 * pert.Theta(kx, 2)),
+)
+# axs[4].plot(
+#     x_array,
+#     -data_Phi
+#     - 12
+#     * (cosmo.H0 / (const.c * k * np.exp(x_array))) ** 2
+#     * (cosmo.OmegaR0 * pert.Theta(kx, 2)),
+# )
+axs[0].axvline(transition)
+axs[1].axvline(transition)
+axs[2].axvline(transition)
+axs[3].axvline(transition)
+
+axs[3].set_xlim(-10, -7)
+fig.savefig(path.join(args.output, "TEST"))
+plt.close(fig)
+
+fig, ax = plt.subplots(figsize=(apsw, 0.7 * apsw))
+ax.set_title("Thetas k = " + str(kmpc) + "/ Mpc")
+ax.plot(x_array, data_Theta0, label=r"$\Theta_0$")
+ax.plot(x_array, data_Theta1, label=r"$\Theta_1$")
+ax.plot(x_array, pert.Theta(kx, 2), label=r"$\Theta_2$")
+ax.plot(x_array, pert.Theta(kx, 3), label=r"$\Theta_3$")
+ax.axvline(transition)
+
+# print("data_Psi", data_Psi)
+ax.legend()
+
+fig.savefig(path.join(args.output, "theta"))
+plt.close(fig)
+# --------- / Perturbation debugging plots -------------
 
 # # Remove when done with milestone
 # exit()

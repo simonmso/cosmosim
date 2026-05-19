@@ -44,11 +44,13 @@ class RecombinationHistory:
         helium_reionization=False,
         z_helium_reion=3.5,
         delta_z_helium_reion=0.5,
+        x_start=-15,
+        x_end=0,
     ):
 
         # Settings for solver
-        self.x_start = -12
-        self.x_end = 0
+        self.x_start = x_start
+        self.x_end = x_end
         self.npts = 500
         self.npts_tau_before_reion = 1000
         self.npts_tau_during_reion = 1000
@@ -142,9 +144,6 @@ class RecombinationHistory:
         self.solve_z_star()
 
         self.solve_sound_horizon()
-
-        # PhD: compute optical depth at reionization
-        # XXX TODO XXX
 
     def plot(self, url):
         """
@@ -273,14 +272,13 @@ class RecombinationHistory:
     def _T_b(self, x):
         return self.cosmo.TCMB0 / np.exp(x)
 
-    def X_e_saha(self, x):
+    def X_e_saha(self, x_inp):
         """
         Solve the Saha equations for hydrogen and helium recombination
         Returns: Xe, ne with Xe = ne/nH beging the free electron fraction
         and ne the electon number density
         """
-        a = np.exp(x)
-
+        x = np.asarray(x_inp)
         n_H = self._n_H(x)
 
         n_b = n_H  # Is this only allowed for Saha?
@@ -295,6 +293,8 @@ class RecombinationHistory:
 
         # Solve Saha equation for Xe
         Xe = (-C + np.sqrt(C**2 + 4 * C)) / 2
+
+        Xe[C > 1e11] = 1.0  # avoid huge - huge causing floating point errors
 
         # Return Xe and ne
         return Xe
@@ -321,7 +321,12 @@ class RecombinationHistory:
             * T_b ** (3 / 2)
             * np.exp(-const.epsilon_0 / T_b)
         )
-        beta_2 = 0.0 if beta == 0 else beta * np.exp(3 * const.epsilon_0 / (4 * T_b))
+        beta_2 = (
+            self._peebles_beta_coef
+            * alpha_2
+            * T_b ** (3 / 2)
+            * np.exp(-const.epsilon_0 / (4 * T_b))
+        )
 
         n_H = self._n_H(x)
         n_1s = (1.0 - X_e) * n_H
@@ -345,7 +350,6 @@ class RecombinationHistory:
                 X_e_0,
             ],
             t_eval=x,
-            method="BDF",
             rtol=1e-6,
             atol=1e-8,
         )
@@ -364,13 +368,10 @@ class RecombinationHistory:
         dtaudx = -c sigmaT ne/H
         (PhD: Include the effects of reionization if z_reion > 0)
         """
-        # reverse_derivative = lambda neg_x, tau: -self._dtau_dx(-neg_x, tau)
-
         x = np.linspace(0, self.x_start, num=self.npts)
 
         sol = integrate.solve_ivp(
             self._dtau_dx,
-            # reverse_derivative,
             (0, self.x_start),
             [
                 0,

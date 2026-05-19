@@ -11,6 +11,7 @@ paperNotes.bib
 
 # Compiled Cython
 *.c
+*.cpp
 *.html
 *.so
 *.o

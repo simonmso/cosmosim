@@ -37,5 +37,5 @@ cdef class BackgroundCosmology:
     cdef double H_fast(self, double x)
     cdef double Hp_fast(self, double x)
     cdef double dHdx_fast(self, double x)
-    cdef double dHpdx_fast(self, double x)
+    cdef double  dHpdx_fast(self, double x)
     

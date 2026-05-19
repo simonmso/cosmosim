@@ -148,8 +148,8 @@ class BackgroundCosmology:
         a3 = a2 * a
         a4 = a3 * a
         M = self.OmegaM0 / a3
-        R = self.OmegaM0 / a4
-        K = self.OmegaM0 / a2
+        R = self.OmegaR0tot / a4
+        K = self.OmegaK0 / a2
         L = self.OmegaLambda0
         return self.H0 * sqrt(M + R + K + L)
 
@@ -180,8 +180,8 @@ class BackgroundCosmology:
         a3 = a2 * a
         a4 = a3 * a
         M = self.OmegaM0 / a3
-        R = self.OmegaM0 / a4
-        K = self.OmegaM0 / a2
+        R = self.OmegaR0tot / a4
+        K = self.OmegaK0 / a2
         L = self.OmegaLambda0
 
         return (self.H0 / (2.0 * sqrt(M + R + K + L))) * (-3.0 * M - 4.0 * R - 2.0 * K)
@@ -345,10 +345,11 @@ class BackgroundCosmology:
 
         fig, ax = plt.subplots(figsize=(apsw, 0.7 * apsw))
 
-        ax.plot(x, eta)
+        ax.plot(x, eta / const.Mpc)
         ax.set_title(r"$\eta(x)$")
         ax.set_xlabel("$x$")
         ax.set_ylabel(r"$\eta(x)$ (Mpc.)")
+        ax.set_yscale("log")
 
         fig.savefig(path.join(url, "eta"))
         plt.close(fig)

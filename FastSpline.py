@@ -15,7 +15,9 @@ class FastSpline:
 
         # Bounds check
         if (x_inp > self.x[self.nx - 1]) or (x_inp < self.x[0]):
-            raise ValueError
+            raise ValueError(
+                f"Input {x_inp} not within [{self.x[0]}, {self.x[self.nx - 1]}]"
+            )
 
         # Find interval
         i: cython.Py_ssize_t = 0
