@@ -75,9 +75,9 @@ class Perturbations:
 
     cosmo: BackgroundCosmology
     rec: RecombinationHistory
-    k_min: cython.double
-    k_max: cython.double
-    npts_k: cython.Py_ssize_t
+    k_min = cython.declare(cython.double, visibility="public")
+    k_max = cython.declare(cython.double, visibility="public")
+    npts_k = cython.declare(cython.int, visibility="public")
     n_ell_theta: cython.Py_ssize_t
     n_tot_tight: cython.Py_ssize_t
     n_tot_full: cython.Py_ssize_t
@@ -89,6 +89,7 @@ class Perturbations:
     results_x = cython.declare(object, visibility="public")
     splines: object
     psi_spline: object
+    source_spline: object
 
     x_start: cython.double
     x_end: cython.double
@@ -163,6 +164,9 @@ class Perturbations:
 
     def Theta(self, kx, ell):
         return self.splines[i_theta + ell](kx)
+
+    def source(self, kx):
+        return self.source_spline(kx)
 
     # =========================================================================
     # =========================================================================
@@ -307,16 +311,22 @@ class Perturbations:
 
         self.splines = []
 
+        # Spline ode variables
         for result in self.results:
             self.splines.append(
                 interpolate.RegularGridInterpolator((ks, x), result, method="cubic")
             )
 
+        # Spline source function
+        source = self.calc_source(ks, x, results, Psi)
+        self.source_spline = interpolate.RegularGridInterpolator(
+            (ks, x), source, method="cubic"
+        )
+
+        # Spline psi
         self.psi_spline = interpolate.RegularGridInterpolator(
             (ks, x), Psi, method="cubic"
         )
-
-        return
 
     def get_ic(self, x, k):
         """
@@ -454,6 +464,109 @@ class Perturbations:
         assert res.converged, f"Failed to find x for tau' > 10ck/Hp, {res.flag}"
         return min(self._tight_stop_indep_k, res.root)
 
+    def calc_source(self, ks, x, results, Psi_full):
+        ret = np.zeros(results.shape[1:])
+
+        a = np.exp(x)
+
+        g = self.rec.g_tilde(x)
+        dg = self.rec.dg_tilde(x)
+        d2g = self.rec.d2g_tilde(x)
+        t = self.rec.tau(x)
+        dt = self.rec.dtau(x)
+        d2t = self.rec.d2tau(x)
+
+        Hp = self.cosmo.Hp(x)
+        dHp = self.cosmo.dHpdx(x)
+        d2Hp = self.cosmo.d2Hpdx2(x)
+
+        for idx, k in enumerate(ks):
+            derivs = self.rhs_py(x, results[:, idx, :], k)
+
+            ck = const.c * k
+
+            O0 = results[i_theta, idx, :]
+            O1 = results[i_theta + 1, idx, :]
+            O2 = results[i_theta + 2, idx, :]
+            O3 = results[i_theta + 3, idx, :]
+            Psi = Psi_full[idx, :]
+            vB = results[i_vB, idx, :]
+
+            dPhi = derivs[i_Phi, :]
+            dO1 = derivs[i_theta + 1, :]
+            dO2 = derivs[i_theta + 2, :]
+            dO3 = derivs[i_theta + 3, :]
+            dvB = derivs[i_vB, :]
+
+            dPsi = (
+                -dPhi
+                - 12
+                * (self.cosmo.H0 / ck) ** 2
+                * self.cosmo.OmegaR0
+                * (dO2 - 2 * O2)
+                / a**2
+            )
+
+            d2O2 = ck / (5 * Hp) * (
+                -(2 * dHp / Hp * O1) + (2 * dO1) + (3 * dHp / Hp * O3) - (3 * dO3)
+            ) + (9 / 10) * (d2t * O2 + dt * dO2)
+
+            rightmost_der = Hp * (dHp * g * O2 + Hp * dg * O2 + Hp * g * dO2) + Hp * (
+                (d2Hp * g * O2 + dHp * dg * O2 + dHp * g * dO2)
+                + (dHp * dg * O2 + Hp * d2g * O2 + Hp * dg * dO2)
+                + (dHp * g * dO2 + Hp * dg * dO2 + Hp * g * d2O2)
+            )
+
+            base = g * (O0 + Psi + 0.25 * O2)
+            int_sachs_wolfe = np.exp(-t) * (dPsi - dPhi)
+            doppler = -1 / ck * ((dHp * g * vB) + (Hp * dg * vB) + (Hp * g * dvB))
+            thompson_prefered = (3 / 4) / ck**2 * rightmost_der
+
+            ret[idx, :] = base + int_sachs_wolfe + doppler + thompson_prefered
+
+        return ret
+
+    # Wrapper for the cython rhs eq.
+    def rhs_py(self, xs, y: cython.double[:, :], k):
+        """
+        xs: array-like
+        """
+        # Arrange y in fortran
+        y_view = y.copy_fortran()
+
+        # Store results here
+        res = np.zeros_like(
+            y_view, order="F"
+        )  # order="F" since we want the array to be contiguous in the first index
+
+        res_view: cython.double[::1, :] = res
+
+        # Package up k and self
+        args: RHS_args = RHS_args(k, cython.cast(cython.pointer(PyObject), self))
+        args_vec: vector[cython.char] = vector[cython.char](cython.sizeof(RHS_args))
+        memcpy(args_vec.data(), cython.address(args), cython.sizeof(RHS_args))
+
+        i: cython.size_t
+        for i, x in enumerate(xs):
+            if x < self._tight_hard_stop:
+                rhs_tight_coupling(
+                    cython.address(res_view[0, i]),
+                    x,
+                    cython.address(y_view[0, i]),
+                    cython.address(args_vec[0]),
+                    DummyPreEval,
+                )
+            else:
+                rhs_full(
+                    cython.address(res_view[0, i]),
+                    x,
+                    cython.address(y_view[0, i]),
+                    cython.address(args_vec[0]),
+                    DummyPreEval,
+                )
+
+        return res
+
 
 RHS_args = cython.struct(k=cython.double, _self=cython.pointer(PyObject))
 
@@ -542,7 +655,7 @@ def rhs_full(
         Pi = O2 if l == 2 else 0
         dydx_view[i_theta + l] = ckHp / (2 * l + 1) * (
             l * y[idx - 1] - (l + 1) * y[idx + 1]
-        ) + dt * (y[idx] - Pi)
+        ) + dt * (y[idx] - Pi / 10)
 
     # Theta lmax
     Olmax = y[lmax_idx]
