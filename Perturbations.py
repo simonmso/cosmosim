@@ -9,6 +9,7 @@ from matplotlib import pyplot as plt
 
 from Global import const
 from Global import APS_COL_W as apsw
+from cython.cimports.FastSpline import FastSpline
 from cython.cimports.BackgroundCosmology import BackgroundCosmology
 from cython.cimports.RecombinationHistory import RecombinationHistory
 from cython.cimports.libc.math import exp
@@ -65,7 +66,7 @@ class Perturbations:
     """
 
     # Settings x-integration
-    npts_x = 2000
+    npts_x = 2500
     # npts_tight = 13
     npts_tight = int(0.4 * npts_x)
 
@@ -90,6 +91,8 @@ class Perturbations:
     splines: object
     psi_spline: object
     source_spline: object
+
+    source_splines = cython.declare(object, visibility="public")
 
     x_start: cython.double
     x_end: cython.double
@@ -322,6 +325,13 @@ class Perturbations:
         self.source_spline = interpolate.RegularGridInterpolator(
             (ks, x), source, method="cubic"
         )
+
+        # Splines experiment
+        splines = []
+        for xi in range(len(x)):
+            s = interpolate.CubicSpline(ks, source[:, xi])
+            splines.append(FastSpline(poly_spline=s))
+        self.source_splines = splines
 
         # Spline psi
         self.psi_spline = interpolate.RegularGridInterpolator(

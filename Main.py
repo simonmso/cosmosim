@@ -92,8 +92,10 @@ pert = Perturbations(
     BackgroundCosmology=cosmo,
     RecombinationHistory=rec,
     n_ell_theta=10,  # Number of ells (0,1,...,n-1) to include in the Boltzmann hierarchy
-    keta_max=3000.0,  # Set kmax based on keta0. 3000 typically enough for Cell, lower for testing
-    npts_k=200,  # 100-200 typically enough for Cell, lower for testing
+    keta_max=300.0,  # Set kmax based on keta0. 3000 typically enough for Cell, lower for testing
+    # keta_max=3000.0,  # Set kmax based on keta0. 3000 typically enough for Cell, lower for testing
+    npts_k=30,  # 100-200 typically enough for Cell, lower for testing
+    # npts_k=200,  # 100-200 typically enough for Cell, lower for testing
     x_start=pert_start,
     x_end=0,
     transition=transition,
@@ -116,8 +118,25 @@ power = PowerSpectrum(
     # n_s=1,  # Spectral index
     n_s=0.96,  # Spectral index
     A_s=2e-9,  # Primordial amplitude
-    ell_max=1500,
+    ell_max=200,
 )  # Maximum ell to compute Cell up to
+
+
+if make_plots:
+    fig, ax = plt.subplots(figsize=(apsw, 0.7 * apsw))
+
+    k = np.logspace(np.log10(1.0001), np.log10(3000 - 0.1), 1000) / cosmo.eta(0.0)
+    unit = cosmo.H0 / const.Mpc
+
+    ax.plot(k / unit, power.matter_power_spectrum(k, 0.0) * unit**3)
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+
+    #     ax.plot(k, special.spherical_jn(15, k * cosmo.eta(0.0)))
+    #     ax.plot(k, theta)
+
+    fig.savefig(path.join(args.output, "matter"))
+    plt.close(fig)
 
 print("Solving Power")
 power.solve()
@@ -125,9 +144,13 @@ power.solve()
 if make_plots:
     fig, ax = plt.subplots(figsize=(apsw, 0.7 * apsw))
 
-    l = np.linspace(5, 1500, 1000)
-    ax.plot(l, l * (l + 1) * power.cell_TT(l))
+    l = np.linspace(5, 2500, 1000)
 
+    unit = (1e6 * cosmo.TCMB0 * const.K) ** 2
+    ax.plot(l, l * (l + 1) / (2 * np.pi) * power.cell_TT(l) / unit)
+
+    ax.set_xscale("log")
+    ax.set_yscale("log")
     #     ax.plot(k, special.spherical_jn(15, k * cosmo.eta(0.0)))
     #     ax.plot(k, theta)
 

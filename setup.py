@@ -14,6 +14,7 @@ setup(
             # "./Perturbations.py",
             "./RecombinationHistory.py",
             "./BackgroundCosmology.py",
+            "./PowerSpectrum.py",
             "./FastSpline.py",
             Extension(
                 "Perturbations",  # Output module name

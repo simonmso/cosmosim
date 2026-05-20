@@ -1,3 +1,4 @@
+import cython
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy import special
@@ -5,11 +6,17 @@ from scipy import interpolate
 from scipy import integrate
 
 from Global import const
-import BackgroundCosmology
-import RecombinationHistory
+
+# import BackgroundCosmology
+# import RecombinationHistory
 import Perturbations
 
+from cython.cimports.FastSpline import FastSpline
+from cython.cimports.BackgroundCosmology import BackgroundCosmology
+from cython.cimports.RecombinationHistory import RecombinationHistory
 
+
+@cython.cclass
 class PowerSpectrum:
     """
     This is a class for solving for power-spectra
@@ -31,6 +38,21 @@ class PowerSpectrum:
       cell_TT                 (ell float->float): Temperature power-spectrum l(l+1)/2pi C_ell as function of ell
       get_matter_power_spectrum (k float->float): Matter power-spectrum P(k) as function of wave-number k
     """
+
+    cosmo: BackgroundCosmology
+    rec: RecombinationHistory
+    pert: Perturbations
+    n_s: cython.double
+    A_s: cython.double
+    kpivot: cython.double
+    n_k_per: cython.int
+    ells: np.ndarray
+    nells: cython.int
+    ell_max: cython.int
+
+    cell_TT_spline = cython.declare(object, visibility="public")
+    bessel_splines: object
+    fast_bessels: object
 
     def __init__(
         self,
@@ -152,18 +174,18 @@ class PowerSpectrum:
         """
         The matter power-spectrum at wavenumber k at time x = log(a)
         """
-        # Compute and return P(k)
-        # XXX TODO XXX
-        return 1.0
+        P_primordial = (
+            (2 * np.pi) ** 2 / (k**3) * self.A_s * (k / self.kpivot) ** (self.n_s - 1)
+        )
+        Delta_M = (
+            (2 / 3)
+            * (const.c * k / self.cosmo.H0) ** 2
+            * (self.pert.Phi((k, x)) / self.cosmo.OmegaM0)
+            * np.exp(x)
+        )
 
-    def primordial_power_spectrum(self, k):
-        """
-        The priordial power-spectrum Delta(k) in P(k) = 2pi^2/k^3 Delta(k)
-        """
-        return self.A_s * (k / self.kpivot) ** (self.n_s - 1.0)
+        return np.abs(Delta_M) ** 2 * P_primordial
 
-    # =========================================================================
-    # =========================================================================
     # =========================================================================
 
     def info(self):
@@ -177,6 +199,8 @@ class PowerSpectrum:
         print("kpivot (1/Mpc): ", self.kpivot * const.Mpc)
         print("ell_max: ", self.ell_max)
 
+    @cython.ccall
+    @cython.boundscheck(False)
     def solve(self):
         """
         Solve for the CMB power-spectrum
@@ -188,44 +212,58 @@ class PowerSpectrum:
         # Set up a k-array to evaluate Theta_ell on
         delta_k = 2 * np.pi / (self.n_k_per * self.cosmo.eta(0.0))
         ks = np.arange(self.pert.k_min + delta_k, self.pert.k_max - delta_k, delta_k)
+        ks_view: cython.double[:] = ks
+        nks: cython.size_t = len(ks)
 
         # Create splines of Bessel functions j_ell(.) needed below for all ells in self.ells
         self.create_bessel_splines()
 
         # Solve for theta_ell(k) for all k in k_array for all ells in self.ells
         theta = np.zeros((self.nells, len(ks)))
+        theta_fast = np.zeros_like(theta)
+        theta_fast_view: cython.double[:, :] = theta_fast
 
-        for li, l in enumerate(self.ells):
-            print("Solving theta for l:", l)
+        li: cython.size_t
+        ki: cython.size_t
+        for li in range(self.nells):
+            # for li, l in enumerate(self.ells):
+            print("Solving theta for l:", self.ells[li])
             theta[li, :] = np.array(
                 [self.solve_theta(k, self.bessel_splines[li]) for k in ks]
             )
+            bessel: FastSpline = self.fast_bessels[li]
+            for ki in range(nks):
+                theta_fast_view[li, ki] = self.solve_theta_fast(ks_view[ki], bessel)
 
-        Cell = self.solve_Cell(theta, ks)
+        print(theta[8, 40:45])
+        print(theta_fast[8, 40:45])
 
-        # Make splines of theta_ell(k) for all the ells
-        # XXX TODO XXX
+        assert np.allclose(theta, theta_fast)
 
         # Integrate up to get Cell's for al the ells
-        # XXX TODO XXX
+        Cell = self.solve_Cell(theta_fast, ks)
 
         # Make spline of Cell
-        # XXX TODO XXX
         self.cell_TT_spline = interpolate.CubicSpline(self.ells, Cell)
 
     def create_bessel_splines(self):
         splines = []
+        fast_splines = []
         n = 20
         dx = 2 * np.pi / n
         x = np.arange(0, 3100, dx)
         for l in self.ells:
-            splines.append(interpolate.CubicSpline(x, special.spherical_jn(l, x)))
+            s = interpolate.CubicSpline(x, special.spherical_jn(l, x))
+            splines.append(s)
+            fast_splines.append(FastSpline(poly_spline=s))
 
         self.bessel_splines = splines
+        self.fast_bessels = fast_splines
 
     def solve_theta(self, k, bessel_func):
         eta0 = self.cosmo.eta(0.0)
 
+        # x = self.pert.results_x
         x = np.arange(-12, 0, 0.01)
         integrand = self.pert.source((k, x)) * bessel_func(
             k * (eta0 - self.cosmo.eta(x))
@@ -233,6 +271,38 @@ class PowerSpectrum:
 
         return integrate.trapezoid(integrand, x)
         # return integrate.quad(integrand, -12, 0)[0]
+
+    @cython.cfunc
+    @cython.boundscheck(False)
+    def solve_theta_fast(self, k: cython.double, bessel: FastSpline) -> cython.double:
+        eta0: cython.double = self.cosmo.eta_fast(0.0)
+
+        xs: cython.double[:] = self.pert.results_x
+
+        sum: cython.double = 0
+
+        prev: cython.double
+        source_sp: FastSpline = self.pert.source_splines[0]
+        cur: cython.double = source_sp.evaluate(k) * bessel.evaluate(
+            k * (eta0 - self.cosmo.eta_fast(xs[0]))
+        )
+
+        # trapezoid integration
+        dx: cython.double
+        xi: cython.size_t
+        for xi in range(1, len(xs)):
+            source_sp = self.pert.source_splines[xi]
+            dx = xs[xi] - xs[xi - 1]
+
+            prev = cur
+            cur = source_sp.evaluate(k) * bessel.evaluate(
+                k * (eta0 - self.cosmo.eta_fast(xs[xi]))
+            )
+            sum += (prev + cur) * dx
+
+        sum = sum / 2
+
+        return sum
 
     def solve_Cell(self, theta, ks):
         Cell = np.zeros(len(self.ells))
