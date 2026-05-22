@@ -279,6 +279,7 @@ class RecombinationHistory:
         and ne the electon number density
         """
         x = np.asarray(x_inp)
+
         n_H = self._n_H(x)
 
         n_b = n_H  # Is this only allowed for Saha?
@@ -294,7 +295,11 @@ class RecombinationHistory:
         # Solve Saha equation for Xe
         Xe = (-C + np.sqrt(C**2 + 4 * C)) / 2
 
-        Xe[C > 1e11] = 1.0  # avoid huge - huge causing floating point errors
+        # avoid huge - huge causing floating point errors
+        if np.ndim(x) > 0:
+            Xe[C > 1e11] = 1.0
+        elif C > 1e11:
+            Xe = 1.0
 
         # Return Xe and ne
         return Xe

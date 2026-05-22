@@ -10,9 +10,7 @@ from BackgroundCosmology import BackgroundCosmology
 from Global import APS_COL_W as apsw
 from Global import const
 
-
 # Set plot style
-# TODO: This should be defined dynamically
 plt.style.use("./style.mplstyle")
 
 # Load the results
@@ -22,6 +20,123 @@ parser.add_argument("-o", "--output", required=True)
 args = parser.parse_args()
 
 dest = args.output
+
+
+# -------------------------------------------------------
+def fig_1():
+    """Figure 1"""
+    npts = 2000
+    x = np.linspace(-20, 5, num=npts)
+
+    cosmo = BackgroundCosmology(
+        name="LCDM",
+        x_pts=x,
+    )  # Label
+    cosmo.info()
+    cosmo.solve()
+
+    # -----------------------------------
+    # Testing omegas
+    fig, axs = plt.subplots(figsize=(apsw, 2.3 * apsw), nrows=4, sharex=True)
+    ax = axs[0]
+
+    ax.plot(x, cosmo.OmegaRtot(x), label=r"$\Omega_R$")
+    ax.plot(x, cosmo.OmegaM(x), label=r"$\Omega_M$")
+    ax.plot(x, cosmo.OmegaLambda(x), label=r"$\Omega_\Lambda$")
+
+    ax.set_title(r"$\Omega_i(x)$, $\Lambda$CDM")
+    # ax.set_xlabel("$x$")
+    ax.set_ylabel(r"$\Omega_i(x)$")
+    ax.legend(loc="center left")
+
+    def mark_equalities(ax):
+        ax.axvline(cosmo.x_rm, c="k", alpha=0.2, ls="--")
+        ax.axvline(cosmo.x_mlam, c="k", alpha=0.2, ls="--")
+        ax.annotate(
+            r"RM", (cosmo.x_rm + 0.2, 0.94), size=7, xycoords=("data", "axes fraction")
+        )
+        ax.annotate(
+            r"M$\Lambda$",
+            (cosmo.x_mlam + 0.2, 0.94),
+            size=7,
+            xycoords=("data", "axes fraction"),
+        )
+
+    mark_equalities(ax)
+
+    # -----------------------------------
+    # (1 / Hp) (dHp / dx)
+    ax = axs[1]
+
+    # expectations
+    for y, lab in zip([-1.0, -0.5, 1.0], ["R", "M", r"$\Lambda$"]):
+        ax.axhline(y, c="k", ls="-.", lw=0.3)
+        ax.annotate(lab, (0.95, y + 0.05), size=7, xycoords=("axes fraction", "data"))
+
+    ax.plot(
+        x,
+        (1 / cosmo.Hp(x)) * cosmo.dHpdx(x),
+        label=r"$\frac{1}{\mathcal{H}}\frac{d\mathcal{H}}{dx}$",
+    )
+
+    ax.set_title(r"(A)")
+    ax.set_ylabel(r"$(1/\mathcal{H})(d\mathcal{H}/dx)$")
+    ax.set_ylim(-1.2, 1.2)
+
+    mark_equalities(ax)
+
+    ax.legend()
+
+    # -----------------------------------
+    # (1 / Hp) (d2Hp / dx2)
+    ax = axs[2]
+
+    # expectations
+    for y, lab in zip([1.0, 0.25], [r"R,$\Lambda$", "M"]):
+        ax.axhline(y, c="k", ls="-.", lw=0.3)
+        ax.annotate(lab, (0.93, y + 0.03), size=7, xycoords=("axes fraction", "data"))
+
+    ax.plot(
+        x,
+        (1 / cosmo.Hp(x)) * cosmo.d2Hpdx2(x),
+        label=r"$\frac{1}{\mathcal{H}}\frac{d^2\mathcal{H}}{dx^2}$",
+    )
+
+    ax.set_title(r"(B)")
+    ax.set_ylabel(r"$(1/\mathcal{H})(d^2\mathcal{H}/dx^2)$")
+    ax.set_ylim(0, 1.4)
+
+    mark_equalities(ax)
+
+    ax.legend()
+
+    # ------------------------------------
+    # eta H / c
+    ax = axs[3]
+    Hp = cosmo.Hp(x)
+    eta = cosmo.eta(x)
+    ax.plot(x, (eta * Hp / const.c), label=r"$\frac{\eta\mathcal{H}}{c}$")
+    ax.set_title("(C)")
+    ax.set_xlabel("$x$")
+    ax.set_ylabel(r"$\eta\mathcal{H}/c$")
+    ax.set_xlim(-21, 6)
+
+    ax.set_yscale("log")
+
+    mark_equalities(ax)
+
+    ax.axhline(1, c="k", ls="-.", lw=0.3)
+    ax.annotate("R", (0.93, 1 + 0.1), size=7, xycoords=("axes fraction", "data"))
+
+    ax.legend()
+
+    fig.savefig(path.join(dest, "domination"))
+    plt.close(fig)
+
+
+fig_1()
+# -------------------------------------------------------
+
 
 f = np.load(path.join(args.data, "supernova.npz"))
 chain = f["chain"]
@@ -157,33 +272,33 @@ for cos in [lcdm, cos_best]:
     print(f"---------- Reporting: {cos.name} --------------")
     print("Radiation-Matter eq.:")
     print(
-        f"x: {cos.x_rm:.5f}  z: {z_of_x(cos.x_rm):.5f}  t: {cos.t(cos.x_rm)[0] / gyr:.5e} Gyr"
+        f"x: {cos.x_rm:.5f}  z: {z_of_x(cos.x_rm):.5f}  t: {cos.t(cos.x_rm) / gyr:.5e} Gyr"
     )
     print(r"$x_{\rm rm}$ & " + f"{cos.x_rm:.3f} \\\\")
     print(r"$z_{\rm rm}$ & " + f"{z_of_x(cos.x_rm):.0f} \\\\")
-    print(r"$t_{\rm rm}$ & " + f"{cos.t(cos.x_rm)[0] / gyr:.3e} (Gyr.) \\\\")
+    print(r"$t_{\rm rm}$ & " + f"{cos.t(cos.x_rm) / gyr:.3e} (Gyr.) \\\\")
     print()
     print("Matter-Lambda eq.:")
     print(
-        f"x: {cos.x_mlam:.5f}  z: {z_of_x(cos.x_mlam):.5f}  t: {cos.t(cos.x_mlam)[0] / gyr:.5e} Gyr"
+        f"x: {cos.x_mlam:.5f}  z: {z_of_x(cos.x_mlam):.5f}  t: {cos.t(cos.x_mlam) / gyr:.5e} Gyr"
     )
     print(r"$x_{\rm m\Lambda}$ & " + f"{cos.x_mlam:.4f} \\\\")
     print(r"$z_{\rm m\Lambda}$ & " + f"{z_of_x(cos.x_mlam):.4f} \\\\")
-    print(r"$t_{\rm m\Lambda}$ & " + f"{cos.t(cos.x_mlam)[0] / gyr:.3f} (Gyr.) \\\\")
+    print(r"$t_{\rm m\Lambda}$ & " + f"{cos.t(cos.x_mlam) / gyr:.3f} (Gyr.) \\\\")
     print()
     print("Acceleration:")
     print(r"$x_{\rm accel.}$ & " + f"{cos.x_accel:.4f} \\\\")
     print(r"$z_{\rm accel.}$ & " + f"{z_of_x(cos.x_accel):.4f} \\\\")
-    print(r"$t_{\rm accel.}$ & " + f"{cos.t(cos.x_accel)[0] / gyr:.3f} (Gyr.) \\\\")
+    print(r"$t_{\rm accel.}$ & " + f"{cos.t(cos.x_accel) / gyr:.3f} (Gyr.) \\\\")
     print()
     print(f"Age of current universe t(0) (Gyr): {cos.t(0) / gyr}")
-    print(f"Age $t(x=0)$  & {cos.t(0)[0] / gyr:.2f} (Gyr.)\\\\")
+    print(f"Age $t(x=0)$  & {cos.t(0) / gyr:.2f} (Gyr.)\\\\")
     print(
         f"Conformal time  of current universe eta(0)/c (Gyr): {cos.eta(0) / const.c / gyr}"
     )
     print(
         r"Conformal time $\eta(x=0)/c$"
-        + f" & {cos.eta(0)[0] / const.c / gyr:.2f} (Gyr.)\\\\"
+        + f" & {cos.eta(0) / const.c / gyr:.2f} (Gyr.)\\\\"
     )
     print()
 

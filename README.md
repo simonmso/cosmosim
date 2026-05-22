@@ -17,3 +17,14 @@ from CyRK import test_pysolver, test_cysolver, test_nbrk
 test_cysolver()
 # Should say: CyRK's CySolver was tested successfully.
 ```
+
+
+### Running the code
+
+```zsh
+python3 -m scripts.ms1_data -d ./data
+python3 -m scripts.ms1_plot -d ./data -o ./results/milestone1/
+python3 -m scripts.ms2 -o ./results/milestone2
+python3 -m scripts.ms3 -o ./results/milestone3
+
+```

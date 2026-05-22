@@ -128,8 +128,6 @@ class BackgroundCosmology:
         # return fast_spline.evaluate(x, self._eta_spline_x, self._eta_spline_c)
 
     def t(self, x):
-        if not hasattr(self, "t_ode_sol"):
-            raise NameError("The spline t_ode_sol has not been created")
         return self.t_ode_sol(x)
 
     def H(self, x):
