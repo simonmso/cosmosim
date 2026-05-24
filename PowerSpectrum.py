@@ -46,13 +46,15 @@ class PowerSpectrum:
     A_s: cython.double
     kpivot: cython.double
     n_k_per: cython.int
-    ells: np.ndarray
+    ells = cython.declare(object, visibility="public")
+    ks = cython.declare(object, visibility="public")
     nells: cython.int
     ell_max: cython.int
 
     cell_TT_spline = cython.declare(object, visibility="public")
     bessel_splines: object
     fast_bessels: object
+    theta_splines = cython.declare(object, visibility="public")
 
     def __init__(
         self,
@@ -63,7 +65,7 @@ class PowerSpectrum:
         n_s=0.96,
         A_s=2e-9,
         ell_max=1500,
-        n_k_per=8,
+        n_k_per=12,
     ):
 
         self.cosmo = BackgroundCosmology
@@ -73,6 +75,13 @@ class PowerSpectrum:
         self.A_s = A_s
         self.kpivot = kpivot_mpc / const.Mpc
         self.n_k_per = n_k_per
+
+        delta_k = 2 * np.pi / (self.n_k_per * self.cosmo.eta(0.0))
+        self.ks = np.arange(
+            self.pert.k_min + 0.001 * delta_k,
+            self.pert.k_max - 0.001 * delta_k,
+            delta_k,
+        )
 
         # The ells we compute Theta_ell (and then Cell) for with LOS integration
         ell_list = np.array(
@@ -200,8 +209,12 @@ class PowerSpectrum:
         print("ell_max: ", self.ell_max)
 
     @cython.ccall
-    @cython.boundscheck(False)
     def solve(self):
+        self.solve_c()
+
+    @cython.cfunc
+    @cython.boundscheck(False)
+    def solve_c(self):
         """
         Solve for the CMB power-spectrum
         1) Generate j_ell splines for all ells
@@ -210,38 +223,41 @@ class PowerSpectrum:
         4) Spline it up
         """
         # Set up a k-array to evaluate Theta_ell on
-        delta_k = 2 * np.pi / (self.n_k_per * self.cosmo.eta(0.0))
-        ks = np.arange(self.pert.k_min + delta_k, self.pert.k_max - delta_k, delta_k)
-        ks_view: cython.double[:] = ks
-        nks: cython.size_t = len(ks)
+
+        # ks_view: cython.double[:] = ks
+        # nks: cython.size_t = len(ks)
 
         # Create splines of Bessel functions j_ell(.) needed below for all ells in self.ells
         self.create_bessel_splines()
 
         # Solve for theta_ell(k) for all k in k_array for all ells in self.ells
-        theta = np.zeros((self.nells, len(ks)))
-        theta_fast = np.zeros_like(theta)
-        theta_fast_view: cython.double[:, :] = theta_fast
+        theta = np.zeros((self.nells, len(self.ks)))
+        # theta_fast = np.zeros_like(theta)
+        # theta_fast_view: cython.double[:, :] = theta_fast
 
         li: cython.size_t
-        ki: cython.size_t
+        # ki: cython.size_t
         for li in range(self.nells):
             # for li, l in enumerate(self.ells):
             print("Solving theta for l:", self.ells[li])
             theta[li, :] = np.array(
-                [self.solve_theta(k, self.bessel_splines[li]) for k in ks]
+                [self.solve_theta(k, self.bessel_splines[li]) for k in self.ks]
             )
-            bessel: FastSpline = self.fast_bessels[li]
-            for ki in range(nks):
-                theta_fast_view[li, ki] = self.solve_theta_fast(ks_view[ki], bessel)
+            # bessel: FastSpline = self.fast_bessels[li]
+            # for ki in range(nks):
+            #     theta_fast_view[li, ki] = self.solve_theta_fast(ks_view[ki], bessel)
 
-        print(theta[8, 40:45])
-        print(theta_fast[8, 40:45])
+        # assert np.allclose(theta, theta_fast)
 
-        assert np.allclose(theta, theta_fast)
+        # Spline theta
+        theta_splines = []
+        for li in range(self.nells):
+            theta_splines.append(interpolate.CubicSpline(self.ks, theta[li]))
+
+        self.theta_splines = theta_splines
 
         # Integrate up to get Cell's for al the ells
-        Cell = self.solve_Cell(theta_fast, ks)
+        Cell = self.solve_Cell(theta, self.ks)
 
         # Make spline of Cell
         self.cell_TT_spline = interpolate.CubicSpline(self.ells, Cell)

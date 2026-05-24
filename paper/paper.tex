@@ -24,6 +24,8 @@
 \newcommand{\Oio}{\Omega_{i,0}}
 \newcommand{\Om}{\Omega_m}
 \newcommand{\Omo}{\Omega_{m,0}}
+\newcommand{\Ob}{\Omega_m}
+\newcommand{\Obo}{\Omega_{b,0}}
 \newcommand{\Or}{\Omega_r}
 \newcommand{\Oro}{\Omega_{r,0}}
 \newcommand{\Ok}{\Omega_k}
@@ -253,7 +255,7 @@ As recommended by the package authors, we estimate the integrated autocorrelatio
 To calculate $\hat{d}_L$, we evolve (\ref{eq:eta}) and (\ref{eq:t}) numerically from very early times ($a\approx10^{-8}$) with the initial conditions $\eta(x_{\rm start})=c/\Hp(x_{\rm start})$ and $t(x_{\rm start})=1/2H(x_{\rm start})$. We then fit a polynomial spline to the result so that we may calculate $\eta(x)$ for any $x$.
 \subsection{Results}
 \begin{table}
-    \caption{\label{tab:results}Summary of parameter estimates from MCMC on supernova data. $\theta_{\rm best}$ is the value with the highest likelihood, with 68\% of samples falling on the interval $(\theta_{\rm best} - \sigma_-, \theta_{\rm best} + \sigma_+)$.}
+    \caption{\label{tab:results1}Summary of parameter estimates from MCMC on supernova data. $\theta_{\rm best}$ is the value with the highest likelihood, with 68\% of samples falling on the interval $(\theta_{\rm best} - \sigma_-, \theta_{\rm best} + \sigma_+)$.}
     \begin{ruledtabular}
         \begin{tabular}{l r}
             $\theta$                  & $\theta_{\rm best}$ $\sigma_+/-\sigma_-$ \\
@@ -298,22 +300,22 @@ To calculate $\hat{d}_L$, we evolve (\ref{eq:eta}) and (\ref{eq:t}) numerically 
     \end{ruledtabular}
 \end{table}
 
-The results of the MCMC simulation are summarized in Table \ref{tab:results}. Features of the highest-likelihood cosmology are summarized in Table \ref{tab:best}. Figure \ref{fig:h0} shows the distribution of samples for $h_0$, including the fiducial value of $h_0=0.6688$. The two are in complete disagreement; notice that the fiducial value falls well outside the entire distribution of samples. This is rather alarming. We choose not to speculate on why these two disagree (there are plenty of more qualified people paid to do so), and note only that the fiducial value was measured from a \textit{significantly} earlier point in our universe's history than the supernovae, meaning there is plenty of room for new theories.
+The results of the MCMC simulation are summarized in Table \ref{tab:results1}. Features of the highest-likelihood cosmology are summarized in Table \ref{tab:best}. Figure \ref{fig:h0} shows the distribution of samples for $h_0$, including the fiducial value of $h_0=0.6688$. The two are in complete disagreement; notice that the fiducial value falls well outside the entire distribution of samples. This is rather alarming. We choose not to speculate on why these two disagree (there are plenty of more qualified people paid to do so), and note only that the fiducial value was measured from a \textit{significantly} earlier point in our universe's history than the supernovae, meaning there is plenty of room for new theories.
 
 Figure \ref{fig:2dhist} shows the distribution for parameters $\Omo$ and $\Olo$. Unlike the distribution for $h_0$, the highest-likelihood values are in close agreement with the fiducial cosmology. However, these parameters are much more poorly constrained, with 95\% intervals that span $\pm100\%$ of the highest-likelihood value. We therefor cannot say that more sensitive tests would not also cause disagreement here.
 \begin{figure}
     \includegraphics[width=\linewidth]{../results/milestone1/h0_hist.png}
-    \caption{\label{fig:h0}Histogram of samples of $h_0$ from the Monte Carlo fit to supernova luminosity distances ($n_{\rm bins}=50$). The solid red line marks the highest likelihood value, the dotted lines the 18th and 82nd percentiles (values reported in table \ref{tab:results}). The fiducial value of $h_0=0.6688$ (black line) is included for reference.}
+    \caption{\label{fig:h0}Histogram of samples of $h_0$ from the Monte Carlo fit to supernova luminosity distances ($n_{\rm bins}=50$). The solid red line marks the highest likelihood value, the dotted lines the 18th and 82nd percentiles (values reported in table \ref{tab:results1}). The fiducial value of $h_0=0.6688$ (black line) is included for reference.}
 \end{figure}
 \begin{figure}
     \includegraphics[width=\linewidth]{../results/milestone1/omega_hist_MLam.png}
-    \caption{\label{fig:2dhist}Histogram of samples of $\Olo$ and $\Omo$ from the Monte Carlo supernovae fit ($n_{\rm bins}=100\times100$). The red `x' marks the sample with the highest likelihood, and 68\% and 95\% of the samples fall within the inner and outer dashed lines respectively (values reported in table \ref{tab:results}). The fiducial value of $\Omo=0.313, \Olo\approx0.69$ (black star) is included for reference. }
+    \caption{\label{fig:2dhist}Histogram of samples of $\Olo$ and $\Omo$ from the Monte Carlo supernovae fit ($n_{\rm bins}=100\times100$). The red `x' marks the sample with the highest likelihood, and 68\% and 95\% of the samples fall within the inner and outer dashed lines respectively (values reported in table \ref{tab:results1}). The fiducial value of $\Omo=0.313, \Olo\approx0.69$ (black star) is included for reference. }
 \end{figure}
 
 Figure \ref{fig:supernovae} plots $d_L$ for our best cosmology alongside the supernova data to which it was fit. At these low redshifts, there is little qualitative difference between the best cosmology and the fiducial cosmology. The fact that for all universes $d_L$ is linear with $z$ in the low-$z$ limit is the reason for our poor constraining ability.
 \begin{figure}
     \includegraphics[width=\linewidth]{../results/milestone1/supernovea.png}
-    \caption{\label{fig:supernovae}Luminosity distance $d_L(z)$ vs. redshift $z$ for the fiducial cosmology and for the highest likelihood cosmology from MCMC simulations (`Best'; see table \ref{tab:results}). Measures of $d_L(z)$ with experimental uncertainty are plotted for the 31 supernovae fit by the MCMC simulation. }
+    \caption{\label{fig:supernovae}Luminosity distance $d_L(z)$ vs. redshift $z$ for the fiducial cosmology and for the highest likelihood cosmology from MCMC simulations (`Best'; see table \ref{tab:results1}). Measures of $d_L(z)$ with experimental uncertainty are plotted for the 31 supernovae fit by the MCMC simulation. }
 \end{figure}
 
 Figure \ref{fig:eta} reports the conformal time $\eta/c$ for our cosmology alongside a `toy' cosmology of $\Omo=0.5,\Olo\approx0.5,T_{\rm CMB}=2.725$ K for comparison. This same `toy' cosmology is included in Figure \ref{fig:Hp}, which demonstrates that although the expansion of the universe has long been slowing down, it has relatively recently begun accelerating again.
@@ -331,12 +333,128 @@ Finally, Figure \ref{fig:t} shows our numerical solution to (\ref{eq:t}) for the
 
 \begin{figure}
     \includegraphics[width=\linewidth]{../results/milestone1/t.png}
-    \caption{\label{fig:t}Age of the universe $t(x)$ for the best cosmology from the MCMC simulation, the fiducial cosmology, and, for comparison, a `toy' cosmology of $\Omo=0.5,\Olo\approx0.5,T_{\rm CMB}=2.725$ K. The current age of the universe $t(0)$ for the `best' model is $t=13.67$ Gyr., as reported in table \ref{tab:results}. Note that the `Best' line lies almost entirely beneath the fiducial.}
+    \caption{\label{fig:t}Age of the universe $t(x)$ for the best cosmology from the MCMC simulation, the fiducial cosmology, and, for comparison, a `toy' cosmology of $\Omo=0.5,\Olo\approx0.5,T_{\rm CMB}=2.725$ K. The current age of the universe $t(0)$ for the `best' model is $t=13.67$ Gyr., as reported in table \ref{tab:results1}. Note that the `Best' line lies almost entirely beneath the fiducial.}
 \end{figure}
 
 
 Broadly, these parameter estimates support the prevailing theory of a universe dominated by a cosmological constant $\Lambda$, with the remaining energy density today coming from matter (remember that we fixed $\Oro$ to the value derived from CMB temperature measurements). We cannot rule out curvature, though it is most likely to be negligible. With the limited data we have here, we are unable to distinguish between baryonic and dark matter.
 
+
+\section{Milestone II}
+\subsection{Introduction}
+The primary concern of the second milestone is recombination, the period of the universe's evolution during which the hot plasma of early on cooled enough to allow hydrogen atoms to form without being immediately reionized. Without enough energy to ionize hydrogen, the photons of this time have been travelling mostly uninterrupted since, and are what we today observe as the cosmic microwave background (CMB), one of the key experimental observations of modern cosmology and the focus of Milestone IV. Knowing when and how recombination occured is a necessary step towards modelling these observables.
+
+As this project is the work of a Master's student, we neglect helium in our treatment of recombination. Following big bang nucleosynthesis, approximately 22\% of the baryon mass was tied up in $^4$He (tk cite dodelson p 95), a significant enough fraction that all the following results should be taken with a rather over-sized grain of salt. Further, we neglect reionization, which took place around $z\approx7.7$ (tk cite planck) and would appear as a jump in the free electron fraction $X_e$ with a corresponding hump in the visibility function $\tilde g$ at that time.
+
+\subsection{Theory}
+On its journey from a source to an observer, light passing through some medium loses intensity to effects like scattering and absorbtion. We quantify this by relating the observed intensity $I$ to the source intensity $I_0$ with $I=I_0e^{-\tau}$, and refer to $\tau$ as the `optical depth.' For the cosmological case of photons scattering off of free electrons in an expanding universe, $\tau$ is defined to be
+\begin{equation}
+    \tau(\eta) = \int_{\eta}^{\eta_0} n_e \sigma_T a d\eta'.
+\end{equation}
+While useful, it is simpler computationally to solve the differential form
+\begin{equation}
+    \frac{d\tau}{dx} = -\frac{c n_e \sigma_T }{H},
+    \label{eq:tau}
+\end{equation}
+where $\sigma_T$ is the Thompson cross-section, $H(x)$ is known from Milestone 1, and $n_e(x)$ is the number density of free electrons at a given time.
+
+Using $\tau$, we can compute the \textit{visibility function} $\tilde g(x)$ with
+\begin{equation}
+    \tilde{g}(x) = -\tau' e^{-\tau}.
+\end{equation}
+Since by construction $\int_{-\infty}^0 \tilde g dx = 1$, $\tilde g(x)$ is a probability density, and we interpret it as the probability a photon observed today was last scattered at time $x$. The peak of this function is the time at which it is most likely a photon was last scattered, aptly named the `time of last scattering.'
+
+The difficulty in computing $\tau(x)$ comes from determining the free electron density $n_e$ as a function of $x$. Early on, when temperatures are high, the dominant interaction $\gamma + H \leftrightarrow e^-+p$ is in equilibrium, and the Boltzman equation for the interaction leads to the relation
+\begin{equation}
+    \frac{n_en_p}{n_H} = \frac{n_e^{(0)}n_p^{(0)}}{n_H^{(0)}},
+    \label{eq:Saha_frac}
+\end{equation}
+Here $n_i^{(0)}$ is the number density of species $i$ at zero chemical potential (see tk dodelson tk callin). To make this useful, we introduce the \textit{fractional electron density} $X_e$ as\footnote{Note that this follows tk Callin and is slightly different from the definition which tk Dodelson and others use for the \textit{free electron fraction} $X_e = n_e / (n_e + n_H)$. Although under $n_H=n_b$ ours is functionally the same, upon including He (which we here exclude) ours would no longer represent `the fraction of electrons which are free,' allowing for percentages greater than 1 and causing confusion to AST5220 students everywhere.}
+\begin{equation}
+    X_e= \frac{n_e}{n_H} = \frac{n_e}{n_b},
+    \label{eq:Xe}
+\end{equation}
+which under (\ref{eq:Saha_frac}) gives
+\begin{equation}
+    \label{eq:Saha}
+    \frac{X_e^2}{1-X_e} = \frac{1}{n_b} \left(\frac{m_e
+        T_b}{2\pi}\right)^{3/2} e^{-\epsilon_0/T_b},
+\end{equation}
+known as the \textit{Saha equation} (as is (\ref{eq:Saha_frac})) [tk cite saha]. With
+\begin{equation}
+    n_H = n_b \approx \frac{\Omega_{b0} \rho_{c0}}{m_H a^3},
+    \label{eq:nH approx}
+\end{equation}
+this equation can be solved analytically by the quadratic formula.
+
+It is only for $X_e > 0.99$ that the equilibrium approximation (\ref{eq:Saha_frac}) holds; afterwards we switch to solving the \textit{Peebles} ODE (tk cite peebles)
+\begin{equation}
+    \frac{dX_e}{dx} = \frac{C_r(T_b)}{H} \left[\beta(T_b)(1-X_e) - n_H
+        \alpha^{(2)}(T_b)X_e^2\right],
+    \label{eq:peebles}
+\end{equation}
+which takes into account ionization from the ground state (through $\beta(T_b)$), recombination to excited states (through $\alpha^{(2)}(T_b)$), and the chance that an excited state atom may be reionized before decaying to the ground state (through $C_r(T_b)$). See tk cite Ma for details on these factors.
+
+Together, the Saha and Peebles equations allow us to solve for $n_e$, from which we compute $\tau(x)$ and $\tilde g(x)$.
+
+A final quantity of interest for this milestone is the sound horizon $s(x)$, which describes the farthest a sound wave could have traveled through the photon-baryon plasma, and therefor the length scale of correlations in the CMB at recombination and the matter power spectrum today. It is given in differential form by
+\begin{equation}
+    \frac{ds(x)}{dx} = \frac{c_s}{\mathcal{H}}
+    \label{eq:sound_horizon}
+\end{equation}
+with $c_s = c \sqrt{\frac{R}{3(1+R)}}$, $R = 4\Omega_{\gamma 0}/3\Omega_{b 0} a$, and $s(x_{\rm ini}) = c_s(x_{\rm ini})/\mathcal{H}(x_{\rm ini})$.
+\subsection{Results}
+All results for Milestone II are generated from our `toy' cosmology of $h_0=0.7$, $\Obo=0.05$, $\Omega_{\rm{CDM},0}=0.45$, $\Olo\approx0.5$, and $T_{\rm{CMB}}=2.7255$ K.
+
+\begin{figure}[h]
+    \includegraphics{../results/milestone2/X_e_z.png}
+    \caption{\label{fig:Xe}Fractional electron density $X_e$ computed once using only the Saha approximation (eq. \ref{eq:Saha}; dashed line) and again with the Peebles ODE (\ref{eq:peebles}) for $X_e<0.99$ (solid line).}
+\end{figure}
+Figure \ref{fig:Xe} reports the fractional electron density $X_e$. The `Saha + Peebles' solution shows the Saha approximation (\ref{eq:Saha}) until $X_e < 0.99$, after which the numerical solution to the Peebles ODE (\ref{eq:peebles}) is used with the Saha approximation as its initial condition. As evidenced by the figure, the Saha approximation diverges from the Peebles ODE around $z\approx1250$. For this cosmology, the freezeout abundance today is $X_e(x=0)=1.919\times10^{-4}$, as reported in Table \ref{tab:results2}.
+
+\begin{figure}[h]
+    \includegraphics{../results/milestone2/tau.png}
+    \caption{\label{fig:tau}Numerical solution in the `toy' cosmology to the optical depth $\tau$ with first and second derivatives w.r.t. $x=\ln(a)$.}
+\end{figure}
+\begin{figure}[h]
+    \includegraphics{../results/milestone2/g.png}
+    \caption{\label{fig:g}Visibility function $\tilde g$ in the `toy' cosmology with first and second $x$-derivatives (separated into three plots for legibility). By definition, the scale of $\tilde g$ is such that $\int_{-\infty}^0 \tilde g dx = 1$.}
+\end{figure}
+Using our solution to $X_e$ and relation (\ref{eq:nH approx}), we numerically integrated the $\tau$ differential equation (\ref{eq:tau}). Figure \ref{fig:tau} shows the results of this. Notice the sharp drop in opacity around $x\approx-7$; this is when recombination takes place, and is in line with the exponential decrease in $X_e$. Figure \ref{fig:g} shows the visibility function $\tilde g$ with a corresponding peak at the same time, implying that a background photon observed today is almost guaranteed to have last scattered during recombination (again, this is not including reionization). Exact times for recombination and last scattering are reported in Table \ref{tab:results2}.
+
+As a test of our implementation of $\tilde g$, a quick numerical integration differed from the expected value of 1 by no more than $10^{-5}$.
+
+Finally, after numerically integrating (\ref{eq:sound_horizon}), Table \ref{tab:results2} reports the sound horizon at recombination to be 125.01 Mpc. We should therefor expect this length scale to be imprinted on the CMB power spectrum in the coming milestones.
+
+With these solutions, we now have the tools to compute the perturbations of Milestone III.
+\begin{table}[h]
+    \caption{\label{tab:results2}Important quantities from Milestone II}
+    \begin{ruledtabular}
+        \begin{tabular}{l r r}
+            \footnotesize{Time of last scattering (peak of $\tilde g$)}                         \\
+            $x_{\rm{ls}}$                                       &        & -7.160               \\
+            $z_{\rm{ls}}$                                       &        & 1285.5               \\
+            $t_{\rm{ls}}$ (yr.)                                 &        & 251453               \\
+            \hline
+            \footnotesize{Time of recombination ($X_e = 0.1$):} & Full   & Saha                 \\
+            $x_{\rm{rc}}$                                       & -7.141 & -7.142               \\
+            $z_{\rm{rc}}$                                       & 1262.0 & 1263.4               \\
+            $t_{\rm{rc}}$ (yr.)                                 & 258999 & 258550               \\
+            \hline
+            \footnotesize{Freezeout abundance}                                                  \\
+            $X_e(x=0)$                                          &        & $1.919\times10^{-4}$ \\
+            \hline
+            \footnotesize{Sound horizon at recombination}                                       \\
+            $s(x_{\rm{rc}})$ (Mpc.)                             &        & 125.01               \\
+        \end{tabular}
+    \end{ruledtabular}
+\end{table}
+\section{Milestone III}
+\subsection{Introduction}
+\subsection{Theory}
+\subsection{Results}
+
+\clearpage
 
 \bibliographystyle{apsrev4-2}
 \bibliography{AST5220}

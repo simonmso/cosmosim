@@ -99,6 +99,11 @@ class Perturbations:
 
     sol_tight = cython.declare(WrapCySolverResult, visibility="public")
 
+    include_sw = cython.declare(bool, visibility="public")
+    include_isw = cython.declare(bool, visibility="public")
+    include_doppler = cython.declare(bool, visibility="public")
+    include_thompson = cython.declare(bool, visibility="public")
+
     def __init__(
         self,
         BackgroundCosmology,
@@ -109,6 +114,10 @@ class Perturbations:
         x_start=-15,
         x_end=0,
         transition=-8.3,
+        include_sw=True,
+        include_isw=True,
+        include_doppler=True,
+        include_thompson=True,
     ):
         """
         Intitialize the object
@@ -134,6 +143,11 @@ class Perturbations:
 
         # Unpack some values for speed
         self.H0 = self.cosmo.H0
+
+        self.include_sw = include_sw
+        self.include_isw = include_isw
+        self.include_doppler = include_doppler
+        self.include_thompson = include_thompson
 
         # PhD: you need to add polarization and neutrinos here and in the ODEs below
         # (and don't forget the differences between the tight coupling and full ODE)
@@ -532,7 +546,14 @@ class Perturbations:
             doppler = -1 / ck * ((dHp * g * vB) + (Hp * dg * vB) + (Hp * g * dvB))
             thompson_prefered = (3 / 4) / ck**2 * rightmost_der
 
-            ret[idx, :] = base + int_sachs_wolfe + doppler + thompson_prefered
+            if self.include_sw:
+                ret[idx, :] += base
+            if self.include_isw:
+                ret[idx, :] += int_sachs_wolfe
+            if self.include_doppler:
+                ret[idx, :] += doppler
+            if self.include_thompson:
+                ret[idx, :] += thompson_prefered
 
         return ret
 

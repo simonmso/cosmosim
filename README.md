@@ -18,6 +18,11 @@ test_cysolver()
 # Should say: CyRK's CySolver was tested successfully.
 ```
 
+### Building the code
+
+```zsh
+python3 setup.py build_ext --inplace
+```
 
 ### Running the code
 

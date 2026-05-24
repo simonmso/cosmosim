@@ -62,7 +62,7 @@ fig, ax = plt.subplots(figsize=(apsw, 0.6 * apsw))
 ax.plot(x, rec.Xe(x), label="Saha + Peebles", c="slategrey")
 ax.plot(x, rec.X_e_saha(x), label="Saha", c="slategrey", ls="--")
 
-ax.set_title(r"Free electron fraction $X_e(x)$")
+ax.set_title(r"Fractional electron density $X_e(x)$")
 ax.set_ylabel(r"$X_e$")
 ax.set_xlabel(r"$x$")
 
@@ -79,7 +79,7 @@ z = 1 / np.exp(x) - 1
 ax.plot(z, rec.Xe(x), label="Saha + Peebles", c="slategrey")
 ax.plot(z, rec.X_e_saha(x), label="Saha", c="slategrey", ls="--")
 
-ax.set_title(r"Free electron fraction $X_e(z)$")
+ax.set_title(r"Fractional electron density $X_e(z)$")
 ax.set_ylabel(r"$X_e$")
 ax.set_xlabel(r"$z$")
 
@@ -168,6 +168,10 @@ print(r"$z_{\rm{rc}}$ & " + f"{z_rc:.1f} \\\\")
 print(r"$t_{\rm{rc}}$ (yr) & " + f"{t_rc:.0f} \\\\")
 print()
 
+print(r"Sound horizon at recombination")
+print(r"$s(x_{\rm{rc, full}})$ (Mpc) & " + f"{rec.s(x_rc)[0] / const.Mpc:.2f} \\\\")
+print()
+
 print(f"Recombination (Saha exp.) (X_e = {X_e_rec:.1f}):")
 res = optimize.root_scalar(lambda x: rec.X_e_saha(x) - X_e_rec, bracket=(-8, -6))
 x_rc = res.root
@@ -180,3 +184,4 @@ print()
 
 print(r"Freezeout abundance")
 print("X_e(x=0) =", f"{rec.Xe(0.0):.3e}")
+print()
