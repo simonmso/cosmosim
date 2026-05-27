@@ -445,25 +445,301 @@ With these solutions, we now have the tools to compute the perturbations of Mile
             $X_e(x=0)$                                          &        & $1.919\times10^{-4}$ \\
             \hline
             \footnotesize{Sound horizon at recombination}                                       \\
-            $s(x_{\rm{rc}})$ (Mpc.)                             &        & 125.01               \\
+            $s(x_{\rm{rc}})$ (Mpc)                              &        & 125.01               \\
         \end{tabular}
     \end{ruledtabular}
 \end{table}
 \section{Milestone III}
 \subsection{Introduction}
-\subsection{Theory}
-\subsection{Results}
+While sitting and reading this report, it may occur to you that the universe today is not the isotropic and homogeneous fluid we have so far treated it as. We are surrounded by stuff, sheep and busses and planets and galaxies and parts of the cosmic microwave background which are fractionally cooler or hotter than the average. Milestone III concerns itself with the development of this stuff (especially the latter), with the goal of allowing us in Milestone IV to predict the statistical properties of the CMB anisotropies and matter power spectrum.
 
+Our modeling is based on first-order perturbations to the quantities with which we are already familiar, such as the density $\rho_i$ of each component, the temperature $T$, and the metric $g$. The introduction of perturbations changes the Boltzman equation for each component, which together with the Einstein equations leaves us a set of coupled differential equations to solve numerically. These are reproduced in tk \ref{appendix}.
+\subsection{Theory}
+As the derivation of the system of differential perturbation equations is rather involved, we merely introduce its characters and give a brief qualitative sketch of how one might solve for them. We begin with the metric potentials $\Psi$ and $\Phi$ in the \textit{Conformal Newton gauge}
+\begin{align*}
+    g_{00} = & -1-2\Psi                \\
+    g_{ij} = & a^2\delta_{ij}[1+2\Phi]
+\end{align*}
+where the delta function ensures that the off-diagonal elements are $g_{0i}=g_{i0}=0$, as with the unperturbed metric, and the time- and space-like components still have opposite sign. $\Phi$ and $\Psi$ together encode perturbations to the scale factor $a$ and to spacetime itself.
+
+Next are density perturbations for cold dark matter $\delta_{\rm{CDM}}$ and  for baryons $\delta_b$. These are defined fractionally, so that
+\begin{equation*}
+    \delta_i\equiv\frac{\delta\rho_i}{\rho_i}
+\end{equation*}
+or, in terms of the number density,
+\begin{equation*}
+    n_i=\bar{n}_i[1+\delta_i]
+\end{equation*}
+where $\bar n_i$ is the average number density for species $i$. Similarly, we define the photon temperature fluctuation $\Theta$ so that
+\begin{equation*}
+    T=\bar T[1+\Theta].
+\end{equation*}
+We work with $\Theta$ primarily through its multipole expansion cite tk
+\begin{equation*}
+    \Theta_\ell\equiv\frac{i^\ell}{2}\int_{-1}^{1}d\mu\mathcal{P}_\ell(\mu)\Theta(\mu),
+\end{equation*}
+where $\mathcal{P}_\ell(\mu)$ is the order-$\ell$ Legendre polynomial.
+
+The basic process of solving for each perturbation starts by expanding a component's distribution function $f(\mathbf{x}, \mathbf{p}, t)$ to first order in the perturbation. This is then plugged in to the appropriate Boltzman equation, including a collision term for the dominant interactions for the component, resulting in an expression involving both  time and spacial derivatives of the perturbation. By transforming the entire expression to Fourier space, spacial derivatives become factors of wavevector $k_i$, and our partial differential equations become coupled ordinary differential equations. Better yet, each Fourier mode is independent, and may be individually solved for each desired $k$.
+
+Expanding $f$ and the collision terms to first order in the perturbations leaves one more perturbation to keep track of: the group velocity $v_i$ for a fluid. Specifically, we consider the velocity of cold dark matter $v_{\rm{CDM}}$ and of baryons $v_b$.
+
+There are two interactions of note. Coulomb scattering $e^- + p \leftrightarrow e^- + p$ couples electrons and protons (our only baryons since we aren't including He and heavier elements) at all times\footnote{It is for this reason we do not evolve seperate $e^-$ and $p$ perturbations}. Compton scattering $e^-+\gamma \leftrightarrow e^- +\gamma$ couples the photons to free electrons (and thus to baryons) before recombination. These have further qualitative effects, such as the baryon velocity $v_b$ influencing the photon dipole $\Theta_1$.
+
+Dark matter does not interact with $\delta_b$ or $\Theta$ by definition. However, all three components do influence the metric perturbations through gravity as governed by the Einstein equations
+\begin{equation*}
+    G^\mu_\nu=8\pi GT^\mu_\nu.
+    \label{eq:einstein}
+\end{equation*}
+Metric perturbations show up in the Einstein tensor $G^\mu_\nu$, which ultimately depends only on the metric $g$. Baryons, cold dark matter, radiation, and the cosmological constant (not yet mentioned in this milestone since we assume it to be constant, i.e. unperturbed) all contribute to the energy-momentum tensor $T^\mu_\nu$. In return, $\Phi$ and/or $\Psi$ show up in the expressions for the evolution of every other component.
+
+One other prediction to come out of equation \ref{eq:einstein} is that the sum $\Phi+\Psi$ is proportional to
+\begin{equation}
+    \Phi+\Psi \propto \frac{a^2}{k^2}\delta_\gamma\Theta_2
+    \label{eq:pot_cancel}
+\end{equation}
+(neglecting neutrinos and polarization) and therefore $\Phi=-\Psi$ for most times and scales (tk cite dodelson p 146).
+
+With our set of differential equations, the final necessity for successful solving is a set of initial conditions. These are given by inflationary physics, and described in tk ref dodelson. Our specific initial conditions are version of these modified in tk cite callin to give values a nonzero starting point for numerical convergence.
+
+\subsection{Numerical evolution}
+There is one small hitch in numerically evolving the coupled set of differential equations (Appendix tk \ref{appendix}) for the perturbations. A term proportional to
+\begin{equation}
+    \tau'[3\Theta_1 + v_b]
+    \label{eq:unstable}
+\end{equation}
+appears in the expressions for both $\Theta_1'$ and $v_b'$. From Milestone II we know that $|\tau'|$ grows exponentially large at early times. On the other hand, $\Theta_1$ and $v_b$ are nearly zero initially, and (\ref{eq:unstable}) is therefor unstable at early times. We refer to the period in which this is an issue as the `tight coupling regime,' and remedy it by solving modified expressions for $\Theta_1'$ and $v_b'$ (also included in appendix tk \ref{appendix}) which are numerically stable.
+
+In theory, the proper point at which to switch between integrating the tight equations to the full equations depends on the wavenumber $k$ for which you are integrating (larger tktk ). In practice, however, this point is essentially `close to but before recombination' for all but the largest $k$. For this reason, we always switch at $x=-8.3$, regardless of $k$.
+
+\subsection{Results}
+We numerically evolved the perturbation equations for 300 values of $k$ ranging logarithmically from $k\eta_0=1.0$ to $k\eta_0=3000.0$ tk check this and from $x=-tk$ to $x=0$. From these, we demonstrate the behavior for perturbations at $k=0.2$/Mpc, $k=0.02$/Mpc, and $k=0.002$/Mpc. All results in this milestone are generated for the `toy' cosmology from Milestone II.
+\begin{figure}[h]
+    \includegraphics[width=\linewidth]{../results/milestone3/density.png}
+    \caption{\label{fig:density}Numerical solution for density perturbations for the `toy' cosmology, including for radiation $\delta_\gamma=4\Theta_0$. $\delta_i$ are plotted for three different magnitudes of $k$.}
+\end{figure}
+Figure \ref{fig:density} displays the results for density perturbations. As expected, all perturbations in the early universe are suppressed while they lie outside the horizon. The smaller wavelengths (larger $k$) enter earlier, with the specific point at which they cross the horizon dictating their behavior. The first mode to enter (dotted line) does so before recombination, and as such, the baryon perturbation $\delta_b$ (tk change label to be abs) closely follows the photon perturbation $\delta_\gamma$. This is the high rate of Compton scattering at play; only at recombination ($x\approx-7.1$) do the two split, with baryons afterwards tracing $\delta_{\rm{CDM}}$.
+
+Comparatively, the largest scale (small $k$) perturbation doesn't cross the horizon until long after recombination, by which point $\delta_b$ and $\delta_\gamma$ are completely independent, leaving $\delta_b$ to perfectly trace $\delta_{\rm{CDM}}$.
+
+In the error of matter-domination, $\delta_{\rm{CDM}}$ and $\delta_b$ grow exponentially, as matter overdensities attract more matter, further growing the overdensity.
+
+\begin{figure}[h]
+    \includegraphics[width=\linewidth]{../results/milestone3/velocity.png}
+    \caption{\label{fig:velocity}Velocity perturbations for cold dark matter and baryons (upper) and for radiation (lower, separated for legibility) for three different $k$, where $v_\gamma = -3\Theta_1$. For clarity, $v_\gamma$ are desaturated after oscillations look dense ($x = tk$ for $k=0.02 /$Mpc and $x = $ for $k=0.2 /$Mpc).}
+\end{figure}
+
+Figure \ref{fig:velocity} shows similar photon-baryon behavior for the velocity perturbations, with $v_b$ for all three wavenumbers closely following $v_\gamma$ up until recombination. Since we define $v_\gamma$ as proportional to the dipole $\Theta_1$, we interpret this behavior as the photon dipole inducing a bulk baryon velocity, with electrons traveling against the photon temperature gradient facing more energetic interactions than those traveling with it.
+
+Notice that unlike matter, the radiation perturbations $\delta_\gamma = 4\Theta_0$ and $v_\gamma =    -3\Theta_1$ do not grow larger in magnitude in the matter-dominated era. This is to be expected, since in this period the expansion of the universe far outpaces Compton scattering. Also, CDM and baryons experience gravitational forces to a much more significant degree, causing perturbations to grow where they don't for photons.
+
+In contrast to the density perturbations, which are constant in the radiation-dominated era, the velocity perturbations grow exponentially from the beginning. tk why is this.
+
+\begin{figure}[h]
+    \includegraphics[width=\linewidth]{../results/milestone3/theta2.png}
+    \caption{\label{fig:theta2}Photon quadrupole evolution for three different wavenumbers $k$. For clarity, both larger $k$ are greyed after oscillations become dense ($x = tk$ for $k=0.02 /$Mpc and $x = $ for $k=0.2 /$Mpc).}
+\end{figure}
+
+Figure \ref{fig:theta2} demeonstrates the typical behavior of photon moments beyond the first (the monopole $\Theta_0$) and second (the dipole $\Theta_1$). These higher moments are suppressed by the large value of $\tau'$ in the tight coupling regime, and only begin to oscillate around the period of recombination. Here again we see larger $k$ experiencing more rapid oscillations, though still not growing in baseline or overall amplitude.
+
+\begin{figure}[h]
+    \includegraphics[width=\linewidth]{../results/milestone3/phi.png}
+    \caption{\label{fig:potentials}Metric perturbations as the universe evolves for three different values of $k$.}
+\end{figure}
+
+Finally, Figure \ref{fig:potentials} tracks the metric perturbations for our three different regimes. For large $k$ with small wavelength, $\Phi(k)$ is able to enter the horizon before recombination, and as such decreases substantially. This is the effect of the radiation dominated era's rapid expansion working against the ability of gravity to pull matter together, diminished further by the high pressures and temperatures of the time keeping overdensities from growing too much.
+
+$\Phi(k)$ outside the horizon at this time are unaffected. These enter into the scene during matter-domination, at which point all potentials become nearly constant at whatever amplitude they had before. It is during this period of constant potential that density perturbations grow exponentially. Only at times very close to today, when dark energy dominates, do we see potentials again dropping off.
+
+Note that $|\Phi(k)+\Psi(k)|$ is almost exactly 0 for all but a short period after recombination for small $k$. This is predicted from (\ref{eq:pot_cancel}); the short period in which the quantity is nonzero corresponds exactly to the time after recombination when both the quadrupole $\Theta_2$ has started to grow (Figure \ref{fig:theta2}) and the photon density $\rho_\gamma$ has not yet decreased too much (first plot of Figure \ref{fig:tests}).
+\section{Milestone IV}
+\subsection{Introduction}
+Having solved for the evolution of perturbations in our universe, we now have the information we need to predict the power spectra of matter and of the CMB. This is the concern of Milestone IV, and is broadly speaking as simple as integrating our multipole results $\Theta_\ell(k)$ over $k$. We compare our CMB result directly to the canonical CMB data from Planck 2018 tk cite, and find poor agreement, likely a result of us neglecting neutrinos, polarization, He, and reionization.
+\subsection{Theory}
+From Milestone III, we have a solution for $\Theta_\ell(k, x)$, yet we are only ever able to measure the temperature at the present ($x=0$)\footnote{For this entire section, we continue to use $x=\ln a$ as a time variable. We remind the reader that this is a different notation from the derivations in tk ref Dodelson, which uses $x$ as a position variable and keeps track of time with $\eta$ or $t$.}. Further, it is typical for experiments to map temperature onto a spherical map, so that temperature $T(\hat n)$ is a function of direction $\hat n$ on the sky. Finally, given that we are limited to measuring $T(\hat n)$ from only one position in space, a proper analysis should compare only the statistics of $T(\hat n)$ to those predicted by $\Theta_\ell(k, x=0)$. These are the motivations for our decomposition of $T$ into spherical harmonics and our use of the correlations $C_\ell$.
+
+We expand $T(\hat n)$ into spherical harmonics like
+\begin{equation}
+    T(\hat{n}) = \sum_{\ell=1}^\infty \sum_{m=-\ell}^\ell a_{\ell m} Y_{\ell m}(\hat{n})
+\end{equation}
+for coefficients $a_{\ell m}$ and where $Y_{\ell m}(\hat{n})$ are the eigenfunctions of Lapace's equation on a sphere (and are thus orthogonal to one another). This $\ell$ turns out to be the same as that for $\Theta_\ell$. Since for a given $\ell$, all $a_{\ell m}$ are drawn randomly from the same Gaussian distribution with mean $\langle a_{\ell m} \rangle = 0$, we compare our results to their variance
+\begin{equation}
+    C_\ell \equiv \langle |a_{\ell m}|^2 \rangle = \langle a_{\ell m}a_{\ell m}^* \rangle.
+\end{equation}
+In terms of $\Theta_\ell$ then, this `angular power spectrum' is given by
+\begin{equation}
+    C_\ell = \frac{2}{\pi}\int k^2P_{\rm primordial}(k) \Theta_\ell^2(k)dk,
+    \label{eq:c_ell_naive}
+\end{equation}
+where $P_{\rm primordial}(k)$ is the power spectrum following inflation [tk cite dodelson]. Computationally, (\ref{eq:c_ell_naive}) leaves us with a problem: from Milestone III, we know each expression for $\Theta_\ell$ to be dependent on $\Theta_{\ell - 1}$, and so solving up to $\ell\approx3000$ requires numerically evolving a very large number of coupled differential equations.
+
+The technique of `line integration' solves this for us. Using the fact that we only care about $\Theta_\ell$ at $x = 0$, we can express the $\ell$-temperature moment as an integral over time of some source function $\tilde{S}(k,x)$ times a Bessel function $j_\ell$
+\begin{equation}
+    \Theta_\ell(k, x=0) = \int_{-\infty}^{0} \tilde{S}(k,x) j_\ell[k(\eta_0-\eta)] dx.
+    \label{eq:lineofsight}
+\end{equation}
+In practice, we integrate (\ref{eq:lineofsight}) from some early time when the integrand is small. The source function is derived from the expressions for the derivatives of each multipole (tk appendix tk), and the terms of $\tilde{S}(k,x)$ may be separated by their physical origin. The dominant contribution is the \textit{Sachs-Wolfe} (SW) term, which is just the monopole $\Theta_0$ weighted by the visibility function $\tilde{g}$, with corrections from $\Psi$ and $\Theta_2$ for energy lost to gravity and a small effect from the angular dependence of Compton scattering
+\begin{equation}
+    \tilde{S}^{\rm{SW}}(k,x) = \tilde{g}\left[ \Theta_0 + \Psi + \frac{1}{4}\Theta_2\right].
+    \label{eq:sw}
+\end{equation}
+Next we have the \textit{integrated Sachs-Wolfe} term, which acts as correction to the previous term accounting for the time dependence of $\Phi$ and $\Psi$, particularly after recombination when there is still radiation energy density and during the late dark energy-dominated era.
+\begin{equation}
+    \tilde{S}^{\rm{ISW}}(k,x)=e^{-\tau} \left[\Psi^\prime-\Phi^\prime\right].
+    \label{eq:isw}
+\end{equation}
+A `doppler' term we present without comment, and finally include a `polarization' term, which had we included polarization would have accounted for its effect on the temperature power spectrum
+\begin{equation}
+    \tilde{S}^{\rm{Doppler}}(k,x)=-\frac{1}{ck}\frac{d}{dx}(\mathcal{H}\tilde{g}v_b)
+    \label{eq:doppler}
+\end{equation}
+\begin{equation}
+    \tilde{S}^{\rm{Pol.}}(k,x) = \frac{3}{4c^2k^2} \frac{d}{dx}\left[\mathcal{H}\frac{d}{dx} (\mathcal{H}\tilde{g}\Theta_2)\right].
+    \label{eq:pol_s}
+\end{equation}
+With these four terms, the full source function is
+\begin{equation}
+    \tilde{S}(k,x) = \tilde{S}^{\rm{SW}} + \tilde{S}^{\rm{ISW}} + \tilde{S}^{\rm{Doppler}} + \tilde{S}^{\rm{Pol.}}.
+    \label{eq:source}
+\end{equation}
+The final element needed for computing $C_\ell$ is then the primordial power spectrum. From inflationary physics, we borrow the Harrison-Zel'dovich (tk cite?) spectrum
+\begin{equation}
+    \frac{k^3}{2\pi^2} P_{\rm{primordial}}(k) = A_s \left(\frac{k}{k_{\rm{pivot}}}\right)^{n_s-1},
+\end{equation}
+where we use spectral index $n_s=0.96$ and for a pivot scale of $k_{\rm{pivot}}=0.05$/Mpc have an amplitude $A_s\approx 2\times10^{-9}$. With that, we are ready to calculate $C_\ell$.
+
+We keep the matter power spectrum in terms of wavenumber $k$. We then already have the elements we need to calculate the full spectrum. Since our normalization separates the primordial spectrum from the Fourier components $\Delta_M(k, x)$ we computed, the full spectrum is
+\begin{equation}
+    P(k,x) = |\Delta_M(k,x)|^2P_{\rm primordial}(k)
+    \label{eq:matterpwr}
+\end{equation}
+where the Fourier components are
+\begin{equation}
+    \Delta_M(k,x) \equiv \frac{2}{3}\left(\frac{ck}{H_0}\right)^2 \frac{\Phi(k,x)}{\Omega_{M0}a^{-1}}.
+\end{equation}
+From Milestone III we know the behavior of a mode is largely determined by whether it entered the horizon before or after recombination. Therefor, a very useful quantity to know is the wavenumber $k_{\rm{eq}}$ for perturbations which entered the horizon right at matter-radiation equality. This is
+\begin{equation}
+    k_{\rm{eq}} = \frac{a_{\rm eq} H(a_{\rm eq})}{c}.
+    \label{eq:k_eq}
+\end{equation}
+We should see considerable difference in the matter power spectrum to the left and right of $k_{\rm{eq}}$.
+\subsection{Results}
+Aside from the two direct comparisons with data (figures \ref{fig:planck_low} and \ref{fig:planck_high}), all results for this milestone are computed with parameters of the `toy' cosmology from Milestone II.
+
+\begin{figure}[h]
+    \includegraphics[width=\linewidth]{../results/milestone4/transfer.png}
+    \caption{\label{fig:transfer}Transfer function for the `toy' cosmology scaled by $\sqrt{\ell(\ell - 1)}$ for tk six different values of $\ell$.}
+\end{figure}
+Figure \ref{fig:transfer} shows the behavior of the transfer function $\Theta_\ell(k)$ following our line of sight integration (\ref{eq:lineofsight}). Each $\Theta_\ell$ has similarly rapid oscillatory behavior which scales approximately with $(\ell(\ell + 1))^{-1/2}$, beginning at higher $k$ and continuing longer for higher $\ell$. These effects are qualitatively inherited from the Bessel functions $j_\ell$. In the simplest approximations, $\tilde{S}(k, x)$ is dominated by the Sachs-Wolfe term, itself approximately a dirac delta function $\tilde{g}(x)\approx\delta(x - x_{\rm{eq}})$ scaled by $\Theta_0$. This delta picks $j_\ell(k(\eta_0-\eta))$ out of integral (\ref{eq:lineofsight}), leading to $\Theta_\ell(k)\propto j_\ell(k(\eta_0-\eta))$ and the rapid oscillations in the figure.
+
+Squaring this and scaling by $1/k$ gives a predictable result for the $C_\ell$ integrand (excluding the primordial spectrum), as demonstrated in Figure \ref{fig:integrand}. We integrate this using simple trapezoid integration, sampled at a frequency of $\Delta k = 2\pi/12\eta_0$ so that there are $\approx 12$ points per oscillation.
+\begin{figure}[h]
+    \includegraphics[width=\linewidth]{../results/milestone4/integrand.png}
+    \caption{\label{fig:integrand}Integrand of the temperature correlation function, scaled by $\ell(\ell + 1)$ and not including the primordial spectrum. Results for six different values of $\ell$ are shown.}
+\end{figure}
+
+\begin{figure}[h]
+    \includegraphics[width=\linewidth]{../results/milestone4/components.png}
+    \caption{\label{fig:components}Contributions to $C_\ell$ for the `toy' cosmology. Each line represents (\ref{eq:c_ell_naive}) integrated with only one of the four source terms, aside from `Full $C_\ell$' (black line) which includes them all.}
+\end{figure}
+Figure \ref{fig:components} shows the contribution of each of the four source terms to the final power spectrum. This was achieved by replacing $\tilde{S}(k,x)$ in (\ref{eq:c_ell_naive}) with one of $\tilde{S}^{\rm{SW}}$, $\tilde{S}^{\rm{ISW}}$, $\tilde{S}^{\rm{Doppler}}$, or $\tilde{S}^{\rm{Pol.}}$ (equations \ref{eq:sw}, \ref{eq:isw}, \ref{eq:doppler}, or \ref{eq:pol_s}), and integrating as usual.
+
+One by one then: the Sachs-Wolfe term is the largest contribution at almost all scales. It is nearly constant in the low-$\ell$ ($\ell < 30$) regime, since these larger-scale perturbations have only recently entered in to the horizon. We then see a large first peak around $\ell=180$, with expected oscillatory behavior thereafter. Only at small scales does the SW spectrum taper off as diffusion damping kicks in.
+
+The integrated Sachs-Wolf term contributes at very large scales and around the first Sachs-Wolfe peak. This is as expected from the form of (\ref{eq:isw}), which tells us that $\tilde{S}^{\rm{ISW}}$ will only be significant when $\tau\lesssim1$ and the potentials are changing. For the largest scales, $\tau$ is tiny and recent dark-energy domination is causing $\Psi$ and $\Phi$ to diminish, as we learned from figures \ref{fig:tau} and \ref{fig:potentials}. As for the contribution to the first peak, the only other time ISW could contribute is earlier than matter domination (which froze $\Psi$ and $\Phi$) and later than $x\approx-8$ (since otherwise $\tau$ would be too large). This is to say that the only other major ISW contribution is to scales which entered in to the horizon at about recombination, which is precisely what the first peak corresponds to.
+
+The Doppler term is insignificant at large scales, which correspond to perturbations that have only recently entered the horizon and have therefor not Doppler shifted much. It then contributes mostly uniformly to the spectrum until being diffusion damped away.
+
+Regretfully, we do not have a clear or intuitive explanation for the behavior of the `Polarization' term (which, again, does not actually contain any polarization perturbation information in our implementation).
+
+\begin{figure}[h]
+    \includegraphics[width=\linewidth]{../results/milestone4/planck_low.png}
+    \caption{\label{fig:planck_low}$C_\ell$ for the fiducial cosmology compared to Planck low-$\ell$ data (tk cite planck).}
+\end{figure}
+Figure \ref{fig:planck_low} compares our computational prediction for $C_\ell$ given the fiducial cosmology to the low-$\ell$ experimental data from the Planck telescope (tk cite Planck). Given the high experimental uncertainty in the region (owing both to the Planck systematics and the high cosmic variance at large scales) it is difficult to say much about the quality of our prediction; we merely remark that by eye, our fit passes through $\approx2/3$ of the experimental uncertainty bars and therefor is experimentally plausible (as any good scientist knows to check).
+
+\begin{figure}[h]
+    \includegraphics[width=\linewidth]{../results/milestone4/planck_high.png}
+    \caption{\label{fig:planck_high}$C_\ell$ for the fiducial cosmology compared to Planck high-$\ell$ data (tk cite planck). `He fudging' refers to transforming $\ell$ and $C_\ell$ by the fixed factors described in (\ref{eq:fudge})}
+\end{figure}
+The high-$\ell$ Planck data of Figure \ref{fig:planck_high} is another story entirely. We fail terribly at reproducing the experimental spectrum. This is almost certainly due to our exclusion of reionization, He, polarization, and neutrinos, all of which shift and/or suppress/exagerate certain features. We may `fudge' the shifting from neutrinos and damping from helium with
+\begin{align}
+    \ell\to   & \ell^{1.018}                       \\
+    C_\ell\to & C_\ell\exp(-0.05(\ell/200)^{1.5}),
+    \label{eq:fudge}
+\end{align}
+which as the figure shows much more closely matches the Planck data.
+
+\begin{figure}[h]
+    \includegraphics[width=\linewidth]{../results/milestone4/matter.png}
+    \caption{\label{fig:matter}Matter power spectrum $P(k,x=0)$ for the present day. $k_{\rm{eq}}$ marks the scale of perturbation that crosses the horizon during recombination.}
+\end{figure}
+Finally, Figure \ref{fig:matter} shows the matter power spectrum $P(k, x=0)$ for the present time. It is marked by $k_{\rm{eq}}$ calculated from (\ref{eq:k_eq}), with different behavior to each side as predicted. To the left of $k_{\rm{eq}}$, $P(k)$ grows with $k$ since as modes get smaller they enter into the horizon earlier and therefor have more time to collect. This changes at $k_{\rm{eq}}$, marking the point beyond which modes are small enough to have entered into the horizon before recombination. From Figure \ref{fig:potentials}, we know that potentials are suppressed in the radiation-dominated epoch, with larger $k$ affected more. We see this as the drop-off in the matter power spectrum to the right of $k_{\rm{eq}}$.
+\section{Conclusion}
+We have here demonstrated the moderate success of our code in calculating the angular temperature power spectrum $C_\ell^{TT}$ and matter power spectrum $P(k)$ for a set of cosmological parameters
 \clearpage
+\appendix
+\section{Appendix}
+\label{appendix}
+Initial Conditions
+\begin{align*}
+    \Psi             & = -\frac{1}{\frac{3}{2} + \frac{2f_\nu}{5}}                               \\
+    \Phi             & = -(1+\frac{2f_\nu}{5})\Psi                                               \\
+    \delta_{\rm CDM} & = \delta_b = -\frac{3}{2} \Psi                                            \\
+    v_{\rm CDM}      & = v_b = -\frac{ck}{2\mathcal{H}} \Psi                                     \\
+                     & \text{Photons:}                                                           \\
+    \Theta_0         & = -\frac{1}{2} \Psi                                                       \\
+    \Theta_1         & = +\frac{ck}{6\mathcal{H}}\Psi                                            \\
+    \Theta_2         & = -\frac{20ck}{45\mathcal{H}\tau^\prime} \Theta_1                         \\
+    \Theta_\ell      & = -\frac{\ell}{2\ell+1} \frac{ck}{\mathcal{H}\tau^\prime} \Theta_{\ell-1} \\
+\end{align*}
+
+Tight coupling
+\begin{align*}
+    q=
+     & \frac{-[(1-R)\tau^\prime + (1+R)\tau^{\prime\prime}](3\Theta_1+v_b) -\frac{ck}{\mathcal{H}}\Psi}{(1+R)\tau^\prime + \frac{\mathcal{H}^\prime}{\mathcal{H}} -1}                                        \\
+     & + \frac{(1-\frac{\mathcal{H}^\prime}{\mathcal{H}})\frac{ck}{\mathcal{H}}(-\Theta_0 +2\Theta_2) - \frac{ck}{\mathcal{H}}\Theta_0^\prime}{(1+R)\tau^\prime + \frac{\mathcal{H}^\prime}{\mathcal{H}} -1} \\
+    v_b^\prime=
+     & \frac{1}{1+R}                                                                                                                                                                                         \\
+     & \times\left[-v_b - \frac{ck}{\mathcal{H}}\Psi + R(q +\frac{ck}{\mathcal{H}}(-\Theta_0 + 2\Theta_2) - \frac{ck}{\mathcal{H}}\Psi)\right]                                                               \\
+    \Theta^\prime_1=
+     & \frac{1}{3} (q - v_b^\prime)
+\end{align*}
+
+Full
+\begin{align*}
+    \Theta^\prime_0       =
+     & -\frac{ck}{\mathcal{H}} \Theta_1 - \Phi^\prime,                                                                      \\
+    \Theta^\prime_1      =
+     & \frac{ck}{3\mathcal{H}}\left[\Theta_0 - 2\Theta_2 + \Psi\right] + \tau^\prime\left[\Theta_1 + \frac{1}{3}v_b\right], \\
+     & 2 \leq \ell < \ell_{\textrm{max}}:                                                                                   \\
+    \Theta^\prime_\ell   =
+     & \frac{ck}{(2\ell+1)\mathcal{H}}\left[\ell\Theta_{\ell-1} - (\ell+1)\Theta_{\ell+1}\right]                            \\
+     & + \tau^\prime\left[\Theta_\ell - \frac{1}{10}\Pi
+    \delta_{\ell,2}\right],                                                                                                 \\
+     & \ell = \ell_{\textrm{max}}:                                                                                          \\
+    \Theta_{\ell}^\prime =
+     & \frac{ck}{\mathcal{H}}\left[
+        \Theta_{\ell-1}-\frac{\ell+1}{k\eta(x)}\Theta_\ell\right]+\tau^\prime\Theta_\ell,
+    \\
+\end{align*}
+
+\begin{align*}
+    \delta_{\rm CDM}^\prime & = \frac{ck}{\mathcal{H}} v_{\rm CDM} - 3\Phi^\prime                  \\
+    v_{\rm CDM}^\prime      & = -v_{\rm CDM} -\frac{ck}{\mathcal{H}} \Psi                          \\
+    \delta_b^\prime         & = \frac{ck}{\mathcal{H}}v_b -3\Phi^\prime                            \\
+    v_b^\prime              & = -v_b - \frac{ck}{\mathcal{H}}\Psi + \tau^\prime R(3\Theta_1 + v_b) \\
+\end{align*}
+
+\begin{align*}
+    \Phi^\prime =  & \Psi - \frac{1}{3}\left(\frac{ck}{\mathcal{H}}\right)^2 \Phi                                                                                                                                                         \\
+                   & + \frac{H_0^2}{2\mathcal{H}^2}                                                \left[\frac{\Omega_{\rm CDM 0}\delta_{\rm CDM}}{a}  + \frac{\Omega_{b 0}\delta_b}{a} + \frac{4\Omega_{\gamma 0}\Theta_0}{a^{2}}\right] \\
+    \Psi         = & -\Phi - \frac{12H_0^2}{c^2k^2a^2}\left[\Omega_{\gamma 0}\Theta_2 + \Omega_{\nu 0}\mathcal{N}_2\right]                                                                                                                \\
+\end{align*}
+
 
 \bibliographystyle{apsrev4-2}
 \bibliography{AST5220}
-
-
-
-
-
-
 
 
 % Put \label in argument of \section for cross-referencing

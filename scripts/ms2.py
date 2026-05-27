@@ -18,17 +18,19 @@ parser.add_argument("-o", "--output", required=True)
 args = parser.parse_args()
 dest = args.output
 
-cosmo = BackgroundCosmology(
+h0 = 0.6737
+cosmo_planck = BackgroundCosmology(
     name="LCDM",  # Label
-    h0=0.7,  # Hubble parameter
-    OmegaB0=0.05,  # Baryon density
+    h0=0.6766,  # Hubble parameter
+    OmegaB0=0.02233 / h0**2,  # Baryon density
     # OmegaB0=0.046,  # Baryon density
-    OmegaCDM0=0.45,  # CDM density
+    OmegaCDM0=0.1198 / h0**2,  # CDM density
     # OmegaCDM0=0.224,  # CDM density
     OmegaK0=0.0,  # Curvature density parameter
     TCMB_in_K=2.7255,  # Temperature of CMB today in Kelvin
     Neff=0.0,  # Effective number of neutrinos
 )
+cosmo = cosmo_planck
 
 print("Solving Background")
 cosmo.solve()

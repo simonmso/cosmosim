@@ -25,16 +25,22 @@ ell_max = 3500
 # npts_k = 20
 # ell_max = 60
 
-print("------------ Toy cosmology ------------")
-cosmo = BackgroundCosmology(
+print("------------ Planck cosmology ------------")
+
+h0 = 0.6737
+cosmo_planck = BackgroundCosmology(
     name="LCDM",  # Label
-    h0=0.7,  # Hubble parameter
-    OmegaB0=0.05,  # Baryon density
-    OmegaCDM0=0.45,  # CDM density
+    h0=0.6766,  # Hubble parameter
+    OmegaB0=0.02233 / h0**2,  # Baryon density
+    # OmegaB0=0.046,  # Baryon density
+    OmegaCDM0=0.1198 / h0**2,  # CDM density
+    # OmegaCDM0=0.224,  # CDM density
     OmegaK0=0.0,  # Curvature density parameter
     TCMB_in_K=2.7255,  # Temperature of CMB today in Kelvin
     Neff=0.0,  # Effective number of neutrinos
 )
+cosmo = cosmo_planck
+
 
 print("Solving Background")
 cosmo.solve()
@@ -179,74 +185,6 @@ def Dl(cl):
     return full_ell * (full_ell + 1) * cl / (2 * np.pi) / muKsq
 
 
-print("------------ Planck 2018 cosmology ------------")
-h0 = 0.6737
-cosmo_planck = BackgroundCosmology(
-    name="LCDM",  # Label
-    h0=0.6766,  # Hubble parameter
-    OmegaB0=0.02233 / h0**2,  # Baryon density
-    # OmegaB0=0.046,  # Baryon density
-    OmegaCDM0=0.1198 / h0**2,  # CDM density
-    # OmegaCDM0=0.224,  # CDM density
-    OmegaK0=0.0,  # Curvature density parameter
-    TCMB_in_K=2.7255,  # Temperature of CMB today in Kelvin
-    Neff=0.0,  # Effective number of neutrinos
-)
-
-print("Solving Background")
-cosmo_planck.solve()
-
-x_start = -18
-
-rec_planck = RecombinationHistory(
-    BackgroundCosmology=cosmo_planck,
-    Yp=0.24,  # Primordial helium fraction
-    reionization=False,  # Include reionization
-    z_reion=11.0,  # Reionization redshift
-    delta_z_reion=0.5,  # Reionization width
-    helium_reionization=False,  # Helium double reionization
-    z_helium_reion=3.5,  # Helium double reionization redshift
-    delta_z_helium_reion=0.5,
-    x_start=x_start,
-    x_end=0,
-)  # Helium double reionization width
-
-print("Solving Recombination")
-rec_planck.solve()
-
-transition = -8.3
-pert_planck = Perturbations(
-    BackgroundCosmology=cosmo_planck,
-    RecombinationHistory=rec_planck,
-    n_ell_theta=10,  # Number of ells (0,1,...,n-1) to include in the Boltzmann hierarchy
-    keta_max=keta_max,  # Set kmax based on keta0. 3000 typically enough for Cell, lower for testing
-    npts_k=npts_k,  # 100-200 typically enough for Cell, lower for testing
-    x_start=x_start,
-    x_end=0,
-    transition=transition,
-)
-
-print("Solving Perturbations")
-pert_planck.solve()
-
-power_planck = PowerSpectrum(
-    BackgroundCosmology=cosmo_planck,
-    RecombinationHistory=rec_planck,
-    Perturbations=pert_planck,
-    kpivot_mpc=0.05,  # Pivot scale in 1/Mpc
-    n_s=0.9652,  # Spectral index
-    A_s=2e-9,  # Primordial amplitude
-    ell_max=ell_max,
-)  # Maximum ell to compute Cell up to
-
-print("Solving Power Spectrum")
-power_planck.solve()
-
-# Power spectra
-muKsq = (1e-6 * const.K / cosmo_planck.TCMB0) ** 2
-Cl_planck = power_planck.cell_TT(full_ell)
-Dl_planck = full_ell * (full_ell + 1) * Cl_planck / (2 * np.pi) / muKsq
-
 print("------------------- Saving -------------------")
 np.savez(
     file=path.join(data, "m4_data_products.npz"),
@@ -261,8 +199,6 @@ np.savez(
     full_ell=full_ell,
     Cl=Cl,
     Dl=Dl(Cl),
-    Cl_planck=Cl_planck,
-    Dl_planck=Dl_planck,
     Cl_sw=Cl_sw,
     Dl_sw=Dl(Cl_sw),
     Cl_isw=Cl_isw,

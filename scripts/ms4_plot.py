@@ -32,8 +32,8 @@ full_ell = products["full_ell"]
 Cl = products["Cl"]
 Dl = products["Dl"]
 matter = products["matter"]
-Cl_planck = products["Cl_planck"]
-Dl_planck = products["Dl_planck"]
+# Cl_planck = products["Cl_planck"]
+# Dl_planck = products["Dl_planck"]
 Cl_sw = products["Cl_sw"]
 Dl_sw = products["Dl_sw"]
 Cl_isw = products["Cl_isw"]
@@ -141,8 +141,8 @@ ax.errorbar(
     label=r"Planck low-$\ell$",
 )
 
-ax.plot(full_ell[rg], Dl_planck[rg], label="Sim. (Planck 2018)", c="steelblue")
-ax.plot(full_ell[rg], Dl[rg], label="Sim. (Toy)", c="tan")
+# ax.plot(full_ell[rg], Dl_planck[rg], label="Fiducial", c="steelblue")
+ax.plot(full_ell[rg], Dl[rg], label="Fiducial", c="tan")
 
 ax.set_title(r"$C_\ell$, low-$\ell$ TT spectrum ")
 ax.set_xlabel(r"$\ell$")
@@ -157,7 +157,8 @@ plt.close(fig)
 # High
 l_cheat = full_ell
 # l_cheat = full_ell**1.018
-Dl_cheat = Dl_planck * np.exp(-0.05 * (full_ell / 200) ** 1.5)
+Dl_cheat = Dl * np.exp(-0.05 * (full_ell / 200) ** 1.5)
+# Dl_cheat = Dl_planck * np.exp(-0.05 * (full_ell / 200) ** 1.5)
 # Dl_cheat = Dl_planck * np.exp(-0.05 * (l_cheat / 200) ** 1.5)
 
 # this is a bit of a hack
@@ -179,11 +180,9 @@ ax.errorbar(
     label="Planck",
 )
 
-ax.plot(full_ell, Dl_planck, label="Sim. (Planck 2018)", c="steelblue")
-ax.plot(
-    l_cheat, Dl_cheat, label="Sim. (Plank 2018 + He fudging)", c="steelblue", ls="--"
-)
-ax.plot(full_ell, Dl, label="Sim. (Toy)", c="tan")
+# ax.plot(full_ell, Dl_planck, label="Sim. (Planck 2018)", c="steelblue")
+ax.plot(l_cheat, Dl_cheat, label="Fiducial + He fudging", c="steelblue", ls="--")
+ax.plot(full_ell, Dl, label="Fiducial", c="steelblue")
 
 ax.set_title(r"$C_\ell$, full TT spectrum")
 ax.set_xlabel(r"$\ell$")
@@ -223,21 +222,35 @@ plt.close(fig)
 
 
 # Matter power spectrum
-cosmo = BackgroundCosmology(
+h0 = 0.6737
+cosmo_planck = BackgroundCosmology(
     name="LCDM",  # Label
-    h0=0.7,  # Hubble parameter
-    OmegaB0=0.05,  # Baryon density
-    OmegaCDM0=0.45,  # CDM density
+    h0=0.6766,  # Hubble parameter
+    OmegaB0=0.02233 / h0**2,  # Baryon density
+    # OmegaB0=0.046,  # Baryon density
+    OmegaCDM0=0.1198 / h0**2,  # CDM density
+    # OmegaCDM0=0.224,  # CDM density
     OmegaK0=0.0,  # Curvature density parameter
     TCMB_in_K=2.7255,  # Temperature of CMB today in Kelvin
     Neff=0.0,  # Effective number of neutrinos
 )
+cosmo = cosmo_planck
+# cosmo = BackgroundCosmology(
+#     name="LCDM",  # Label
+#     h0=0.7,  # Hubble parameter
+#     OmegaB0=0.05,  # Baryon density
+#     OmegaCDM0=0.45,  # CDM density
+#     OmegaK0=0.0,  # Curvature density parameter
+#     TCMB_in_K=2.7255,  # Temperature of CMB today in Kelvin
+#     Neff=0.0,  # Effective number of neutrinos
+# )
 cosmo.solve()
 
 a_rm = np.exp(cosmo.x_rm)
 H_rm = cosmo.H(cosmo.x_rm)
 
 k_eq = a_rm * H_rm / const.c / (cosmo.h0 / const.Mpc)
+print("k_eq (1 / Mpc)", k_eq)
 
 fig, ax = plt.subplots(figsize=(apsw, 0.7 * apsw))
 
