@@ -69,6 +69,7 @@ fig.legend(
 )
 ax.set_xlabel(r"$k\eta_0$")
 ax.set_title(r"Transfer function $\sqrt{\ell (\ell + 1)} \Theta_\ell(k)$")
+ax.set_xlim(min(ks_eta), max(ks_eta))
 
 fig.savefig(path.join(args.output, "transfer"))
 plt.close(fig)
@@ -101,6 +102,8 @@ fig.legend(
 ax.set_title(r"$C_\ell$ Integrand $\ell(\ell + 1)|\Theta_\ell(k)|^2 / k$")
 ax.set_xlabel(r"$k\eta_0$")
 ax.set_ylabel(r"(Mpc.)")
+ax.set_xlim(min(ks_eta), max(ks_eta))
+ax.set_ylim(0, 60)
 
 fig.savefig(path.join(args.output, "integrand"))
 plt.close(fig)

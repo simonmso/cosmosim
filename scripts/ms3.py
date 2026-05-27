@@ -24,27 +24,14 @@ dest = args.output
 h0 = 0.6737
 cosmo_planck = BackgroundCosmology(
     name="LCDM",  # Label
-    h0=0.6766,  # Hubble parameter
+    h0=h0,  # Hubble parameter
     OmegaB0=0.02233 / h0**2,  # Baryon density
-    # OmegaB0=0.046,  # Baryon density
     OmegaCDM0=0.1198 / h0**2,  # CDM density
-    # OmegaCDM0=0.224,  # CDM density
     OmegaK0=0.0,  # Curvature density parameter
     TCMB_in_K=2.7255,  # Temperature of CMB today in Kelvin
     Neff=0.0,  # Effective number of neutrinos
 )
 cosmo = cosmo_planck
-# cosmo = BackgroundCosmology(
-#     name="LCDM",  # Label
-#     h0=0.7,  # Hubble parameter
-#     OmegaB0=0.05,  # Baryon density
-#     # OmegaB0=0.046,  # Baryon density
-#     OmegaCDM0=0.45,  # CDM density
-#     # OmegaCDM0=0.224,  # CDM density
-#     OmegaK0=0.0,  # Curvature density parameter
-#     TCMB_in_K=2.7255,  # Temperature of CMB today in Kelvin
-#     Neff=0.0,  # Effective number of neutrinos
-# )
 
 print("Solving Background")
 cosmo.solve()
@@ -128,7 +115,7 @@ k_labels = [f"$k$ = {k} / Mpc" for k in ks_bare]
 
 fig.legend(
     [style_gamma, style_cdm, style_b, *k_lines],
-    [r"$\delta_\gamma$", r"$\delta_{\rm CDM}$", r"$|\delta_{\rm b}|$", *k_labels],
+    [r"$|\delta_\gamma|$", r"$\delta_{\rm CDM}$", r"$|\delta_{\rm b}|$", *k_labels],
     loc="outside lower center",
     ncols=2,
     frameon=False,

@@ -30,11 +30,9 @@ print("------------ Planck cosmology ------------")
 h0 = 0.6737
 cosmo_planck = BackgroundCosmology(
     name="LCDM",  # Label
-    h0=0.6766,  # Hubble parameter
+    h0=h0,  # Hubble parameter
     OmegaB0=0.02233 / h0**2,  # Baryon density
-    # OmegaB0=0.046,  # Baryon density
     OmegaCDM0=0.1198 / h0**2,  # CDM density
-    # OmegaCDM0=0.224,  # CDM density
     OmegaK0=0.0,  # Curvature density parameter
     TCMB_in_K=2.7255,  # Temperature of CMB today in Kelvin
     Neff=0.0,  # Effective number of neutrinos
